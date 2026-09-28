@@ -1,5 +1,5 @@
 import "server-only";
-import { detectAll, nameTokensOf, type PiiType } from "./detect";
+import { detectAll, nameTokensOf, phoneKeys, type PiiType } from "./detect";
 
 export interface VerifyResult {
   ok: boolean;
@@ -18,6 +18,7 @@ export function verifyRedaction(
 ): VerifyResult {
   const leaks: VerifyResult["leaks"] = detectAll(redactedText, fullName).map((f) => ({ type: f.type, value: f.value }));
   const lower = redactedText.toLowerCase();
+  const keys = phoneKeys(redactedText);
   for (const t of nameTokensOf(fullName)) {
     const re = new RegExp(`(?<![\\p{L}\\p{N}])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
     if (re.test(redactedText)) leaks.push({ type: "CANDIDATE", value: t });
@@ -27,7 +28,7 @@ export function verifyRedaction(
     if (v.value.length >= 5 && lower.includes(v.value.toLowerCase())) leaks.push(v);
     if (v.type === "PHONE") {
       const digits = v.value.replace(/\D/g, "");
-      if (digits.length >= 8 && redactedText.replace(/\D/g, "").includes(digits)) leaks.push(v);
+      if (digits.length >= 8 && keys.has(digits.slice(-10))) leaks.push(v);
     }
   }
   const seen = new Set<string>();

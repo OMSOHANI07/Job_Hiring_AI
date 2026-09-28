@@ -81,6 +81,16 @@ export function isPhone(raw: string): boolean {
   return false;
 }
 
+/** Last-10-digit keys of every phone-like digit run in the text (separators ignored). */
+export function phoneKeys(text: string): Set<string> {
+  const keys = new Set<string>();
+  for (const m of text.matchAll(/\+?\d[\d \-().]{6,22}\d/g)) {
+    const d = m[0].replace(/\D/g, "");
+    if (d.length >= 8) keys.add(d.slice(-10));
+  }
+  return keys;
+}
+
 export function detectPhones(text: string): Finding[] {
   const out: Finding[] = [];
   for (const m of text.matchAll(PHONE_CANDIDATE)) {
