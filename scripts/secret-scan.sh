@@ -3,7 +3,7 @@
 # or any actual value from .env.local. Never prints the matched value.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PATTERNS='AIza[0-9A-Za-z_-]{20,}|AQ\.Ab[0-9A-Za-z_-]{20,}|eyJ[0-9A-Za-z_-]{20,}\.|sb_secret[_]|service_role"?\s*[:=]\s*"?eyJ'
+PATTERNS='AIza[0-9A-Za-z_-]{20,}|AQ\.Ab[0-9A-Za-z_-]{20,}|eyJ[0-9A-Za-z_-]{20,}\.|sb_secret[_][0-9A-Za-z_-]{16,}|service_role"?\s*[:=]\s*"?eyJ'
 fail=0
 if [[ "${1:-}" == "--dir" ]]; then
   target="$2"

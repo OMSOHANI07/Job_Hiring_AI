@@ -23,9 +23,9 @@ export class LocalStore implements Store {
   private originals: string;
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(dir = process.env.LOCAL_DATA_DIR ?? path.join(process.cwd(), ".data")) {
-    this.file = path.join(dir, "db.json");
-    this.originals = path.join(dir, "cv-originals");
+  constructor(dir = process.env.LOCAL_DATA_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), ".data")) {
+    this.file = path.join(/*turbopackIgnore: true*/ dir, "db.json");
+    this.originals = path.join(/*turbopackIgnore: true*/ dir, "cv-originals");
     mkdirSync(this.originals, { recursive: true, mode: 0o700 });
   }
 
@@ -78,11 +78,11 @@ export class LocalStore implements Store {
   async listPii(ids: string[]) { const s = new Set(ids); return this.read().candidate_pii.filter((p) => s.has(p.resume_id)); }
   async saveOriginal(id: string, ext: string, data: Uint8Array) {
     const name = `${id}.${ext}`;
-    writeFileSync(path.join(this.originals, name), data, { mode: 0o600 });
+    writeFileSync(path.join(/*turbopackIgnore: true*/ this.originals, name), data, { mode: 0o600 });
     return `cv-originals/${name}`;
   }
   async getOriginal(storagePath: string) {
-    const p = path.join(path.dirname(this.originals), storagePath);
+    const p = path.join(/*turbopackIgnore: true*/ path.dirname(this.originals), storagePath);
     if (!p.startsWith(this.originals) || !existsSync(p)) return null;
     return new Uint8Array(readFileSync(p));
   }

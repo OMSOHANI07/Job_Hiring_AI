@@ -93,7 +93,7 @@ export async function getResultView(resumeId: string): Promise<ResultView | null
   const rc = CFG.roles[score.role];
   const ev = (extraction?.extraction ?? {}) as { evidence?: Record<string, string[]>; evidence_grades?: Record<string, "A" | "B" | "C"> };
   const criteria = rc.criteria.map((c): CriterionView => ({
-    id: c.id, name: c.name, block: c.block.replace("Kargo ", ""), weight: c.weight,
+    id: c.id, name: c.name, block: c.block === "Kargo DNA" ? "Kargo DNA" : "Craft", weight: c.weight,
     level: score.levels[c.id], grade: score.levels[c.id] > 0 ? (ev.evidence_grades?.[c.id] ?? "C") : "–",
     multiplier: score.evidence_multipliers[c.id], points: score.points[c.id],
     evidence: ev.evidence?.[c.id] ?? [], levelRule: c.level_rules[String(score.levels[c.id]) as "0" | "1" | "2" | "3"],
