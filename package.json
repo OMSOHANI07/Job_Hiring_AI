@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "tsx tests/e2e/run.ts",
-    "parity": "tsx scripts/parity.ts",
+    "parity": "tsx --conditions=react-server scripts/parity.ts",
     "secret-scan": "bash scripts/secret-scan.sh",
     "typecheck": "tsc --noEmit"
   },
