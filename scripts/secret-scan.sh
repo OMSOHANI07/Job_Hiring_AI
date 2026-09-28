@@ -16,6 +16,7 @@ fi
 if [[ -f .env.local ]]; then
   while IFS='=' read -r k v; do
     [[ -z "${k// }" || "$k" == \#* ]] && continue
+    case "$k" in GEMINI_MODEL|STORAGE_DRIVER|SUPABASE_URL|LOCAL_DATA_DIR) continue ;; esac  # not secrets
     v="${v%%#*}"; v="$(echo -n "$v" | xargs)"
     [[ ${#v} -lt 12 ]] && continue
     if [[ "${1:-}" == "--dir" ]]; then
