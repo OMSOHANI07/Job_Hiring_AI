@@ -88,6 +88,7 @@ export interface Store {
   updatePii(resumeId: string, patch: Partial<PiiRow>): Promise<void>;
   listPii(resumeIds: string[]): Promise<PiiRow[]>;
   saveOriginal(resumeId: string, ext: string, data: Uint8Array, contentType: string): Promise<string>;
+  getOriginal(storagePath: string): Promise<Uint8Array | null>;
   insertExtraction(row: Omit<ExtractionRow, "id" | "created_at">): Promise<void>;
   latestExtraction(resumeId: string): Promise<ExtractionRow | null>;
   replaceScores(resumeId: string, rows: Omit<ScoreRow, "id" | "created_at">[]): Promise<void>;

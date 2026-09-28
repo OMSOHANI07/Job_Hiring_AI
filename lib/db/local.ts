@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { AuditEvent, ExtractionRow, PiiRow, ResumeRow, ScoreRow, Store } from "./types";
 
@@ -80,6 +80,11 @@ export class LocalStore implements Store {
     const name = `${id}.${ext}`;
     writeFileSync(path.join(this.originals, name), data, { mode: 0o600 });
     return `cv-originals/${name}`;
+  }
+  async getOriginal(storagePath: string) {
+    const p = path.join(path.dirname(this.originals), storagePath);
+    if (!p.startsWith(this.originals) || !existsSync(p)) return null;
+    return new Uint8Array(readFileSync(p));
   }
   insertExtraction(row: Omit<ExtractionRow, "id" | "created_at">) {
     return this.mutate((db) => { db.extractions.push({ ...row, id: randomUUID(), created_at: new Date().toISOString() }); });

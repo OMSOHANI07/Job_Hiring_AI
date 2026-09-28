@@ -72,6 +72,11 @@ export class SupabaseStore implements Store {
     if (error) throw new Error(`supabase storage: ${error.message}`);
     return `cv-originals/${name}`;
   }
+  async getOriginal(storagePath: string) {
+    const { data, error } = await this.db.storage.from("cv-originals").download(storagePath.replace(/^cv-originals\//, ""));
+    if (error || !data) return null;
+    return new Uint8Array(await data.arrayBuffer());
+  }
   async insertExtraction(row: Omit<ExtractionRow, "id" | "created_at">) { this.check(await this.db.from("extractions").insert(row)); }
   async latestExtraction(id: string) {
     return this.check(

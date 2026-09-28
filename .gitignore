@@ -45,3 +45,6 @@ next-env.d.ts
 /.data/
 /tests/.out/
 __pycache__/
+
+# local agent config
+/.claude/
