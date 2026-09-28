@@ -1,0 +1,354 @@
+{
+  "version": "2.0",
+  "as_of": "2026-09",
+  "sources": ["arjun_instincts.md v1.0", "Kargo JD: Product Manager", "Kargo JD: Senior Product Manager"],
+
+  "evidence_grades": {
+    "A": { "multiplier": 1.0,  "rule": "Specific, attributable to the candidate personally, and quantified or with a verifiable outcome." },
+    "B": { "multiplier": 0.85, "rule": "Specific and attributable, but no number or outcome." },
+    "C": { "multiplier": 0.6,  "rule": "Team-attributed ('part of', 'supported', 'assisted', 'we'), generic, or a claim with no context." },
+    "grounding": "Instincts anti-signal: 'every achievement framed as part of a large team, with no individual call visible'; non-signal: 'framework vocabulary describes method, not evidence of doing the work'."
+  },
+
+  "evidence_validation": {
+    "rule": "Every criterion with level > 0 must have at least one evidence snippet that appears in the redacted CV text (normalised substring, or fuzzy ratio >= 0.85). If none matches, the level is forced to 0 and flag 'evidence_not_found:<id>' is raised.",
+    "fuzzy_threshold": 0.85,
+    "grounding": "Protects against the model inventing experience; a ranking Arjun can defend must be traceable to the CV."
+  },
+
+  "bands": {
+    "priority_shortlist": { "min_score": 85, "requires": ["all gates pass", "all non-negotiables", "avg DNA evidence multiplier >= 0.9", "no consistency flags"], "meaning": "Interview this week." },
+    "shortlist":          { "min_score": 75, "requires": ["all gates pass", "all non-negotiables"], "meaning": "Interview." },
+    "review":             { "min_score": 60, "meaning": "Arjun decides; no email drafted until he does." },
+    "not_shortlisted":    { "max_score": 59.9, "meaning": "Respectful rejection drafted; sent only on Arjun's click." }
+  },
+
+  "capacity": {
+    "max_priority_per_role": 3,
+    "max_shortlist_total_per_role": 6,
+    "overflow_action": "Demote lowest-ranked overflow to the next band with flag 'cleared_bar_capacity'.",
+    "thin_warning_below": 2,
+    "grounding": "Case: Arjun has no HR, is the hiring manager for every role, and reviews in 45-minute windows. Success is one offer, not a long list."
+  },
+
+  "penalties": {
+    "cap": -12,
+    "items": [
+      { "id": "X1", "points": -3, "when": "cv_style.credential_led", "grounding": "Instincts non-signal: certifications, community signals, LeetCode appear mainly in the non-thriving group." },
+      { "id": "X2", "points": -3, "when": "cv_style.domain_claimed AND ops_level <= 1", "grounding": "Instincts anti-signal: domain knowledge described only through tools, APIs or customers, never through doing the work." },
+      { "id": "X3", "points": -3, "when": "ownership.team_framed_only AND ownership_level <= 1", "grounding": "Instincts anti-signal: every achievement framed as part of a large team (the Below Expectations hire's pattern)." },
+      { "id": "X4", "points": -2, "when": "cv_style.framework_terms_count >= 4 AND NOT any killed/reversed/failure evidence", "grounding": "Instincts non-signal: framework vocabulary (JTBD, OKR, Agile) without concrete stories." },
+      { "id": "X5_PM", "role": "PM", "points": -3, "when": "cv_style.maintenance_only", "grounding": "PM JD: 'ideally at a company building for the first time rather than maintaining what already exists'." },
+      { "id": "X5_SPM", "role": "SPM", "points": -3, "when": "cv_style.feature_level_only", "grounding": "SPM JD: 'clear evidence of owning a product area', 'the hard architectural product calls'." }
+    ]
+  },
+
+  "bonuses": {
+    "cap": 5,
+    "items": [
+      { "id": "B1", "points": 3, "when": "ops.ops_before_current_function AND ops.mode == hands_on", "grounding": "Instincts core finding: thriving hires worked inside operations BEFORE moving into the function they were hired for (Lavanya, Rohan, Sunita, Aditya, Meghna)." },
+      { "id": "B2", "points": 2, "when": "ops.worked_at_forwarder_or_3pl AND ops.mode == hands_on", "grounding": "Kargo's customers are mid-sized freight forwarders and 3PLs (both JDs). 4 of 5 thriving hires worked at exactly that kind of firm or its CHA/port counterpart." }
+    ]
+  },
+
+  "roles": {
+    "PM": {
+      "title": "Product Manager",
+      "archetype": "Lavanya Iyer: 3PL carrier allocation and exceptions → sole PM at a Series A port/logistics SaaS; killed 2 features on usage data; engineering lead: 'She doesn't hedge.'",
+      "dna_criteria": ["P1", "P2", "P3"],
+      "gates": [
+        { "id": "K1", "name": "Product experience", "rule": "product_years >= 1.5 (PM/APM/Product Owner 100%; product decisions owned without a PM 50%). If > 6: PM band capped at Review with flag 'consider_for:SPM'.", "grounding": "PM JD: '2–4 years of product management experience'. 0.5-year tolerance below; above 6 the person is likely an SPM." },
+        { "id": "K2", "name": "Location", "rule": "Fail only if location_status == explicitly_unwilling. not_stated → pass + flag 'confirm_relocation'.", "grounding": "PM JD: 'Mumbai-based or willing to relocate. This role is in-office.' Silence on a CV must not reject." },
+        { "id": "K3", "name": "Has shipped", "rule": "P4 level >= 1 (at least one attributable shipped outcome).", "grounding": "PM JD: 'Evidence that you've shipped things'." }
+      ],
+      "non_negotiables": [
+        { "rule": "P1 >= 2", "grounding": "5/5 thriving hires had hands-on ops; PM JD 6-month success: 'spent time inside freight forwarding operations… in the rooms where the work actually happens'." },
+        { "rule": "P3 >= 2", "grounding": "PM JD: 'You will be the PM — not one of ten'; Lavanya (sole PM) Exceeds vs Vikram (1 of 4 PMs) Meets." },
+        { "rule": "P4 >= 2", "grounding": "PM JD: 'shipped things, killed things, and learned from both — preferably in short cycles'." },
+        { "rule": "P1 + P2 + P3 >= 7", "grounding": "Kargo DNA triad: all 5 thriving hires scored 9/9; the best non-thriving hire (Rahul) scored 5/9." }
+      ],
+      "floors": [
+        { "criterion": "P1", "if_level": 0, "cap_band": "review", "grounding": "Without any ops exposure the maximum score is 72, below the cutoff; the floor makes the rule explicit." }
+      ],
+      "criteria": [
+        {
+          "id": "P1", "name": "Freight-floor immersion", "weight": 28, "block": "Kargo DNA",
+          "grounding": "Instinct 1 (5/5 thriving vs 0/3 others). PM JD: 'What does a freight forwarder's morning actually look like? What breaks? What slows them down?'",
+          "sub_signals": {
+            "ops.domain_tier": "A = freight forwarding, CHA/customs brokerage, NVOCC, shipping line, port/terminal, air cargo, 3PL. B = warehousing, manufacturing floor, field operations, supply chain planning outside logistics firms. none.",
+            "ops.mode": "hands_on = personally prepared documents, coordinated carriers/customs, managed exceptions or allocation. desk_adjacent = built software for, sold to, supported, marketed to, or integrated with ops. none.",
+            "ops.months_hands_on": "Total months in hands_on roles.",
+            "ops.kargo_surfaces": "Subset of [shipment_tracking, documentation, carrier_coordination, customs_clearance, exception_management] the candidate personally performed.",
+            "ops.live_crisis": "Personally resolved an operational crisis (customs hold, cargo delay, exception) — used for probe selection."
+          },
+          "level_rules": {
+            "3": "tier A AND hands_on AND months >= 12 AND >= 2 kargo_surfaces",
+            "2": "tier A AND hands_on (but < 12 months or < 2 surfaces), OR tier B AND hands_on AND months >= 12",
+            "1": "desk_adjacent in tier A/B, OR tier B hands_on < 12 months",
+            "0": "otherwise"
+          },
+          "interview_probe": "Walk me through a freight forwarder's worst morning that you personally lived through. What broke, who did you call, and what did you change afterwards?"
+        },
+        {
+          "id": "P2", "name": "Builds the missing thing, and it spreads", "weight": 16, "block": "Kargo DNA",
+          "grounding": "Instinct 2 (Rohan's Excel tracker adopted in 2 weeks; Lavanya's dashboard adopted by 2 regional teams; Sunita's weekend workflow kept permanently). PM JD: 'no PM handbook, no design system, no sprint template. You'll build those.'",
+          "sub_signals": {
+            "builds[]": "Each: unprompted (bool), gap_type (operational | functional_process | practice_standard), adoption_scope (self | own_team | cross_team | org_standard | customers), permanent (bool), measurable_effect (bool)."
+          },
+          "level_rules": {
+            "3": "any build that is unprompted AND gap_type == operational AND (adoption cross_team/org_standard/customers OR permanent)",
+            "2": "any build that is unprompted AND adopted by own_team or wider; OR an assigned operational build adopted wider",
+            "1": "any build or improvement at all",
+            "0": "no builds"
+          },
+          "interview_probe": "What did you build that nobody asked you to build? How did other teams end up using it?"
+        },
+        {
+          "id": "P3", "name": "Sole ownership, no product layer above", "weight": 16, "block": "Kargo DNA",
+          "grounding": "Instinct 3. PM JD: 'You will be the PM — not one of ten', 'Comfort operating without structure', reports directly to Arjun.",
+          "sub_signals": {
+            "ownership.layer_above": "none | manager_only | senior_specialists | close_supervision",
+            "ownership.sole_owner": "Sole PM/owner of the product or area with no peer PMs making calls on it.",
+            "ownership.area_owner": "Owns a named area/module.",
+            "ownership.reports_to_founder_ceo": "bool",
+            "ownership.owned_incident_to_closure": "Personally owned an incident, outage or crisis end to end.",
+            "ownership.team_framed_only": "Every achievement framed as a team member."
+          },
+          "level_rules": {
+            "3": "(layer_above == none OR sole_owner) AND owned_incident_to_closure",
+            "2": "(layer_above == none OR sole_owner), OR (area_owner AND owned_incident_to_closure)",
+            "1": "area_owner",
+            "0": "otherwise"
+          },
+          "interview_probe": "Tell me about a product call you made that nobody could overrule. Would you make it again?"
+        },
+        {
+          "id": "P4", "name": "Ships and kills on evidence, in short cycles", "weight": 12, "block": "Kargo PM craft",
+          "grounding": "Instinct 5 + PM JD verbatim: 'shipped things, killed things, and learned from both — preferably in short cycles'. PM JD 6-month success: 'two features that customers use without being asked to'.",
+          "sub_signals": {
+            "shipping.shipped_count": "int, attributable to the candidate",
+            "shipping.outcome_measured": "Usage/adoption/business outcome reported",
+            "shipping.killed_or_reversed": "Killed or reversed their own work based on evidence",
+            "shipping.postmortem": "Wrote or ran a post-mortem/retrospective",
+            "shipping.short_cycles": "Outcome observed within weeks (e.g. 'within 30 days')"
+          },
+          "level_rules": {
+            "3": "killed_or_reversed AND outcome_measured",
+            "2": "outcome_measured AND (postmortem OR short_cycles)",
+            "1": "shipped_count >= 1",
+            "0": "nothing shipped"
+          },
+          "interview_probe": "What's something you shipped that you later killed? What told you, and how fast?"
+        },
+        {
+          "id": "P5", "name": "0→1 building", "weight": 8, "block": "Kargo PM craft",
+          "grounding": "Instinct 4. PM JD: 'a company building for the first time rather than maintaining', 'building a product function from scratch'.",
+          "sub_signals": {
+            "environment.best_stage": "early (seed/Series A/<150 people) | independent | mid (Series B+/150–1000) | large (1000+)",
+            "environment.first_of_kind": "Built the first version of a product, function, process or document at the company"
+          },
+          "level_rules": {
+            "3": "best_stage in (early, independent) AND first_of_kind",
+            "2": "best_stage in (early, independent), OR (mid AND first_of_kind)",
+            "1": "best_stage == mid",
+            "0": "large or unknown"
+          },
+          "interview_probe": "What did you build from nothing that a bigger company would have handed you on day one?"
+        },
+        {
+          "id": "P6", "name": "Discovery with operations users", "weight": 10, "block": "Kargo PM craft",
+          "grounding": "PM JD: 'Customer discovery — … from the people who use it daily'; 'not just over calls, but in the rooms where the work actually happens'. Lavanya's discovery with freight forwarders cut one account's tickets by 60%.",
+          "sub_signals": {
+            "discovery.method": "none | secondhand (tickets, analytics, synthesis for others) | interviews | on_site",
+            "discovery.users_are_ops": "Users interviewed are operations staff (forwarders, carriers, warehouse, field ops)",
+            "discovery.changed_build": "The finding changed what got built",
+            "discovery.quantified_effect": "The change had a measured effect"
+          },
+          "level_rules": {
+            "3": "method in (interviews, on_site) AND users_are_ops AND changed_build AND quantified_effect",
+            "2": "method in (interviews, on_site) AND (changed_build OR users_are_ops)",
+            "1": "method in (secondhand, interviews, on_site)",
+            "0": "none"
+          },
+          "interview_probe": "Tell me about a discovery session with operations users that changed your roadmap. What did you see that data hadn't shown you?"
+        },
+        {
+          "id": "P7", "name": "Engineering knows what's coming three sprints out", "weight": 5, "block": "Kargo PM craft",
+          "grounding": "PM JD: 'The engineering team knows what they are building three sprints out'; 'define what gets built, in what order, and why'.",
+          "sub_signals": {
+            "eng_cadence.signal": "none | specs_handoff | direct_scope (worked directly with engineering on scope/sequencing) | owns_rhythm (set the roadmap/prioritisation cadence engineering runs on)"
+          },
+          "level_rules": { "3": "owns_rhythm", "2": "direct_scope", "1": "specs_handoff", "0": "none" },
+          "interview_probe": "Three urgent things land in the same sprint. How do you decide, and how does engineering find out?"
+        },
+        {
+          "id": "P8", "name": "Built for Kargo's core surfaces", "weight": 5, "block": "Kargo PM craft",
+          "grounding": "PM JD 'What You'll Own': shipment tracking, documentation workflows, and real-time status visibility for freight forwarders.",
+          "sub_signals": {
+            "product_surfaces.surfaces": "Subset of [tracking_visibility, documentation_workflows, carrier_coordination_scheduling, ops_workflow_tool]",
+            "product_surfaces.customer_type": "logistics | ops_heavy_b2b | other_b2b | b2c | none"
+          },
+          "level_rules": {
+            "3": "customer_type == logistics AND any of tracking_visibility / documentation_workflows / carrier_coordination_scheduling",
+            "2": "customer_type == logistics, OR (customer_type == ops_heavy_b2b AND any surface)",
+            "1": "customer_type in (other_b2b, ops_heavy_b2b)",
+            "0": "otherwise"
+          },
+          "interview_probe": "If you owned shipment tracking at Kargo, what's the first thing you'd want to see our users do in it?"
+        }
+      ]
+    },
+
+    "SPM": {
+      "title": "Senior Product Manager",
+      "archetype": "Rohan Desai: 32 months as CHA operations executive at JNPT → lead engineer who owned a freight platform's data-vendor migration and translated field requirements 'without a product layer'. There is no senior PM among past hires; this is the closest pattern.",
+      "dna_criteria": ["S1", "S2", "S3"],
+      "gates": [
+        { "id": "K1", "name": "Product-ownership experience", "rule": "product_years >= 4.5 (PM/Product Owner 100%; product decisions owned without a PM 50%). Below → Not shortlisted for SPM, evaluate for PM. Above 10 → pass + flag 'check_level_fit'.", "grounding": "SPM JD: '5–8 years of product management experience'. 50% credit reflects Rohan's path." },
+        { "id": "K2", "name": "Location", "rule": "As PM K2.", "grounding": "SPM JD: 'Mumbai-based or willing to relocate'." },
+        { "id": "K3", "name": "Has owned a product area", "rule": "ownership.area_owner OR ownership.sole_owner.", "grounding": "SPM JD: 'clear evidence of owning a product area without a layer of senior PMs above you'." },
+        { "id": "K4", "name": "Integration or platform exposure", "rule": "S4 level >= 1.", "grounding": "SPM JD: owns 'the integration and data layer of Kargo's platform'." }
+      ],
+      "non_negotiables": [
+        { "rule": "S1 >= 2", "grounding": "SPM JD: ops familiarity is 'a genuine advantage here, not a nice-to-have'; 5/5 thriving hires." },
+        { "rule": "S2 >= 2", "grounding": "SPM JD: 'no committee that approves product decisions'; 'consequences we will feel two years from now'." },
+        { "rule": "S4 >= 2", "grounding": "SPM JD 6-month success: 'an integration roadmap… engineering, sales, and Arjun all agree on'." },
+        { "rule": "S1 + S2 + S3 >= 7", "grounding": "Kargo DNA triad, same logic as PM." }
+      ],
+      "floors": [
+        { "criterion": "S1", "if_level": 0, "cap_band": "review", "grounding": "No ops exposure at all contradicts the pattern behind every thriving hire." }
+      ],
+      "criteria": [
+        {
+          "id": "S1", "name": "Freight-floor immersion, including the systems", "weight": 22, "block": "Kargo DNA",
+          "grounding": "Instinct 1. SPM JD: 'Familiarity with how operations-heavy industries work at ground level… a genuine advantage'; integrations must work inside 'the freight management tools our customers already operate'.",
+          "sub_signals": {
+            "ops.*": "As P1",
+            "ops.systems_hands_on": "Operational systems personally used: CargoWise, ICEGATE/customs EDI, TMS, port or carrier portals, ERP."
+          },
+          "level_rules": {
+            "3": "P1-level-3 conditions AND (>= 1 systems_hands_on OR >= 3 kargo_surfaces)",
+            "2": "P1-level-3 conditions without systems, OR P1-level-2 conditions",
+            "1": "P1-level-1 conditions",
+            "0": "otherwise"
+          },
+          "interview_probe": "Which system our customers run on have you watched fail in real life, and what did people on the floor do when it failed?"
+        },
+        {
+          "id": "S2", "name": "Consequential calls, no layer above", "weight": 16, "block": "Kargo DNA",
+          "grounding": "Instinct 3. SPM JD: 'owning a product area without a layer of senior PMs above you making the calls'; 'make calls in ambiguous situations and live with the consequences'.",
+          "sub_signals": {
+            "decisions.final_decider": "bool",
+            "decisions.irreversibility": "none | low | medium | high (architecture, vendor, platform, data model, migration)",
+            "decisions.lived_with_consequence": "Reports the outcome of their own call"
+          },
+          "level_rules": {
+            "3": "final_decider AND irreversibility == high AND lived_with_consequence",
+            "2": "final_decider AND irreversibility in (medium, high), OR (irreversibility == high AND lived_with_consequence)",
+            "1": "irreversibility != none",
+            "0": "otherwise"
+          },
+          "interview_probe": "What's the hardest-to-reverse product decision you've made? What would have told you it was wrong?"
+        },
+        {
+          "id": "S3", "name": "Sets standards that others adopt", "weight": 12, "block": "Kargo DNA",
+          "grounding": "Instinct 2 (senior form: Rohan's code review and on-call cut P1 incidents 40%). SPM JD: 'The product function has clearer standards for what good PM work looks like, because you have demonstrated it.'",
+          "sub_signals": { "builds[]": "As P2" },
+          "level_rules": {
+            "3": "any build that is unprompted AND (adoption cross_team/org_standard/customers OR permanent) AND measurable_effect",
+            "2": "any build that is unprompted AND adopted by own_team or wider",
+            "1": "any build or improvement",
+            "0": "none"
+          },
+          "interview_probe": "What standard for good work have you set that people still follow after you left?"
+        },
+        {
+          "id": "S4", "name": "Owns the integration and data layer", "weight": 18, "block": "Kargo SPM craft",
+          "grounding": "SPM JD: 'how we connect with carrier systems, port portals, ERP environments, and the freight management tools our customers already operate'.",
+          "sub_signals": {
+            "integration.targets": "Subset of [carrier_systems, port_customs_portals, erp, fms_tms, other_3p_api]",
+            "integration.role": "owner | contributor | consumer | none",
+            "integration.external_system_count": "int",
+            "integration.owned_migration_or_data_layer": "Owned a vendor/data-layer migration or the data layer itself"
+          },
+          "level_rules": {
+            "3": "role == owner AND any logistics target (carrier_systems/port_customs_portals/erp/fms_tms) AND (external_system_count >= 2 OR owned_migration_or_data_layer)",
+            "2": "role == owner, OR (role == contributor AND logistics target AND external_system_count >= 2)",
+            "1": "role in (contributor, consumer)",
+            "0": "none"
+          },
+          "interview_probe": "Tell me about an integration you chose not to build. What did you do instead, and what did it cost?"
+        },
+        {
+          "id": "S5", "name": "Build / configure / stay-away judgement and reliability", "weight": 10, "block": "Kargo SPM craft",
+          "grounding": "SPM JD: 'what we build, what we configure, what we stay away from'; 'reliability and data quality standards that freight forwarders can stake their operations on'.",
+          "sub_signals": {
+            "architecture.explicit_build_configure_avoid": "Explicitly describes choosing build vs configure vs avoid",
+            "architecture.reliability_metric": "Owns a reliability metric (uptime, incidents, lag, data loss)",
+            "architecture.data_quality_standard": "Set a data-quality standard",
+            "architecture.role": "owner | contributor | none"
+          },
+          "level_rules": {
+            "3": "explicit_build_configure_avoid AND (reliability_metric OR data_quality_standard) AND role == owner",
+            "2": "role == owner AND (reliability_metric OR data_quality_standard), OR explicit_build_configure_avoid",
+            "1": "role == contributor AND (reliability_metric OR data_quality_standard)",
+            "0": "otherwise"
+          },
+          "interview_probe": "Where did you draw the line between building, configuring and refusing? Who disagreed?"
+        },
+        {
+          "id": "S6", "name": "Integrations that unlock revenue", "weight": 10, "block": "Kargo SPM craft",
+          "grounding": "SPM JD 6-month success: 'At least one major integration has shipped that opened a new customer segment or unblocked a stalled deal'; 'across sales, engineering, and customer operations'.",
+          "sub_signals": {
+            "commercial.deal_unblocked": "bool",
+            "commercial.segment_opened": "bool",
+            "commercial.onboarding_or_integration_time_reduced": "bool",
+            "commercial.functions_worked_with": "Subset of [sales, engineering, operations, customer_success, customers]"
+          },
+          "level_rules": {
+            "3": "deal_unblocked OR segment_opened",
+            "2": "onboarding_or_integration_time_reduced OR >= 3 functions",
+            "1": ">= 1 function",
+            "0": "none"
+          },
+          "interview_probe": "Tell me about a deal that closed because of something you built. How did you learn it was blocking?"
+        },
+        {
+          "id": "S7", "name": "Environments where the rules weren't written", "weight": 7, "block": "Kargo SPM craft",
+          "grounding": "Instinct 4. SPM JD: 'Time spent at an early-stage company, or… environments where the rules were not written yet'.",
+          "sub_signals": { "environment.*": "As P5" },
+          "level_rules": { "3": "As P5", "2": "As P5", "1": "As P5", "0": "As P5" },
+          "interview_probe": "What rules did you have to write in your last role that didn't exist when you joined?"
+        },
+        {
+          "id": "S8", "name": "Candour: lives with and learns from calls", "weight": 5, "block": "Kargo SPM craft",
+          "grounding": "Instinct 5 (weakest signal, 2/5 thriving). SPM JD: 'live with the consequences'; roadmap that 'has not changed three times in six weeks'.",
+          "sub_signals": {
+            "candour.reversed_or_failure_documented": "bool",
+            "candour.tradeoffs_visible": "bool",
+            "candour.data_informed": "bool"
+          },
+          "level_rules": { "3": "reversed_or_failure_documented", "2": "tradeoffs_visible", "1": "data_informed", "0": "none" },
+          "interview_probe": "Tell me about a call you got wrong. What did you change afterwards?"
+        }
+      ]
+    }
+  },
+
+  "routing": {
+    "rule": "If the applied-role band is below Shortlist and the other-role band is Shortlist or Priority, add flag 'consider_for:<other>'. If the applied band was Not shortlisted, raise it to Review. Never auto-reject someone who clears the other role's bar.",
+    "grounding": "Components Map: 'Scores candidate against PM and SPM rubrics (both roles)'."
+  },
+
+  "excluded_attributes": ["name", "gender", "age", "photo", "marital_status", "religion", "caste", "college_name", "family_background", "home_city", "career_gaps"],
+
+  "email_policy": {
+    "priority_shortlist": "Interview invite; propose slots within 5 working days.",
+    "shortlist": "Interview invite.",
+    "review": "No draft until Arjun decides.",
+    "not_shortlisted": "Warm, role-specific rejection. Never mention scores, criteria, penalties or the instincts.",
+    "send": "Only via Resend, only when Arjun clicks send."
+  }
+}
+
+
