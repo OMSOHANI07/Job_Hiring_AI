@@ -35,7 +35,7 @@ export function defaultModel(): string {
 }
 
 let client: GoogleGenAI | null = null;
-const realGenerate: GenerateFn = async (req) => {
+export const realGenerate: GenerateFn = async (req) => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new ExtractionError("GEMINI_API_KEY is not set", 0, null);
   client ??= new GoogleGenAI({ apiKey: key });

@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "tsx tests/e2e/run.ts",
+    "test:e2e": "tsx --conditions=react-server --env-file=.env.local tests/e2e/run.ts",
     "parity": "tsx --conditions=react-server scripts/parity.ts",
     "secret-scan": "bash scripts/secret-scan.sh",
     "typecheck": "tsc --noEmit"

@@ -1,5 +1,5 @@
 import "server-only";
-import { extractEvidence, ExtractionError, PiiInPayloadError } from "@/lib/ai/gemini";
+import { extractEvidence, ExtractionError, PiiInPayloadError, realGenerate, type GenerateFn } from "@/lib/ai/gemini";
 import { getStore } from "@/lib/db/client";
 import type { PiiRow, ResumeRow, ScoreRow } from "@/lib/db/types";
 import { DECISION } from "@/lib/decision";
@@ -131,7 +131,10 @@ export function toScoreRow(resumeId: string, a: AppliedEvaluation): Omit<ScoreRo
  * Arjun clicked "Confirm & score". Asserts the resume is redacted and re-verifies before anything leaves
  * the server, then extracts (Gemini) and scores the applied role only.
  */
-export async function scoreResume(resumeId: string): Promise<{ status: "scored"; decision: string; score: number }> {
+export async function scoreResume(
+  resumeId: string,
+  generate: GenerateFn = realGenerate, // injectable so the E2E test can capture the outgoing Gemini payload
+): Promise<{ status: "scored"; decision: string; score: number }> {
   const store = getStore();
   const resume = await store.getResume(resumeId);
   if (!resume) throw new PipelineError(404, "Resume not found.");
@@ -158,7 +161,7 @@ export async function scoreResume(resumeId: string): Promise<{ status: "scored";
     const out = await extractEvidence({
       resumeId, appliedRole: resume.applied_role, redactedText: resume.redacted_text,
       locationStatus: resume.location_status, piiValues: pii.redaction_values,
-    });
+    }, generate);
     await store.insertExtraction({
       resume_id: resumeId, model: out.model, prompt_version: out.promptVersion, config_version: CFG.version,
       extraction: out.extraction, raw_response: out.rawResponse, attempts: out.attempts, latency_ms: out.latencyMs,
