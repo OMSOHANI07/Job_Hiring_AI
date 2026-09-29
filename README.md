@@ -1,6 +1,6 @@
 # Kargo Hiring Dashboard
 
-A password-protected web app that helps Arjun Mehta (founder, Kargo) screen **Product Manager** and **Senior Product
+A web app that helps Arjun Mehta (founder, Kargo) screen **Product Manager** and **Senior Product
 Manager** CVs against rubrics built from his own past hires. You upload a CV, the app strips personal details, you confirm
 what the AI will see, and it returns a deterministic, explainable score with a downloadable breakdown.
 
@@ -50,6 +50,16 @@ What reaches Gemini: the system prompt and schema from `KARGO_RUBRICS.md` §3, t
 applied role, and the **redacted** CV text. Nothing else. Some Gemini tiers may use prompts to improve Google's products,
 which is one more reason redaction happens first and is verified twice (at upload and again just before the call).
 
+## Pages
+
+| Page | What it's for |
+|---|---|
+| **Candidates** (`/candidates`, home) | Every evaluated CV ranked per role: score, recommendation, level chips for all 8 rubric criteria, flags, and **Interview / Reject / Details** actions |
+| **Interviews** (`/interviews`) | Everyone who has been sent an interview invitation, with their full interview brief and the slots offered |
+| **Upload CVs** (`/upload`) | Bulk upload (up to 60 PDF/DOCX): parse and redact each file, open any redaction preview, then one **Confirm & score** click for the batch |
+| **Details** (`/results/[id]`) | Why ranked here, per-criterion breakdown with evidence, eligibility, probes, brief, email editor, downloads |
+| **Examples** (`/examples`) | The two worked samples through the real pipeline |
+
 ## After scoring: brief, email, send
 
 The `email_policy` in the rubric config decides what gets drafted:
@@ -94,8 +104,6 @@ npm run dev                       # http://localhost:3000
 | `SUPABASE_URL` | server only | |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | never sent to the browser |
 | `SUPABASE_ANON_KEY` | RLS test only | used by `tests/rls-check.ts` to prove the anon key is denied |
-| `APP_PASSWORD` | server only | Arjun's login password |
-| `SESSION_SECRET` | server + proxy | 32+ random bytes, e.g. `openssl rand -base64 32` |
 
 ### Neon (recommended database)
 
@@ -172,7 +180,7 @@ API routes run on the Node.js runtime; `/api/score/*` has `maxDuration = 60` (a 
 - PII lives only in `candidate_pii` (and the private original file). Every other table, log line, audit payload and the Gemini request uses the Resume ID only. The stored file name is reduced to `cv.pdf` / `cv.docx`, because file names often contain the candidate's name.
 - Redaction fails closed: if any detector still fires after redaction, the resume is marked `redaction_failed` and scoring is blocked. A second guard (`assertNoPii`) refuses to send any request containing a stored contact value or identifier.
 - Excluded attributes (name, gender, age, photo, marital status, religion, caste, college name, family background, home city, career gaps) have no path into scoring. They are either redacted or not represented in the schema, and the prompt tells the model to ignore them.
-- All routes require the signed, httpOnly session cookie (`proxy.ts`). Login is rate-limited (5 failures per 15 minutes per IP).
+- **No login** (removed at Arjun's request). Anyone who can reach the URL can see candidates and trigger drafting/sending. Keep the deployment private (Vercel Deployment Protection) or add auth back before sharing the URL.
 - CSV exports prefix cells starting with `= + - @` with `'`, so spreadsheets can't evaluate them as formulas (phone numbers start with `+`).
 
 ## Limitations
@@ -181,7 +189,6 @@ API routes run on the Node.js runtime; `/api/score/*` has `maxDuration = 60` (a 
 - **Scanned PDFs are not supported** (no OCR). Upload a DOCX or a text-based PDF.
 - **Name detection relies on founder confirmation.** The name is guessed from the first line and redacted everywhere, but Arjun must check the preview. Name tokens under 3 characters are only removed as part of the full name.
 - Gemini at temperature 0 is not perfectly deterministic. Borderline sub-signals can change a level between runs (see the samples). Decisions for the two samples were stable across 3 runs.
-- The login rate limiter is in-memory per server instance and resets on cold start. That's enough for a single user, but it isn't a distributed limiter.
 - Home-city detection covers a list of Indian and major international cities on the contact line and on `Location:` lines. Unusual places may need manual review in the preview.
 
 ## Next phase
