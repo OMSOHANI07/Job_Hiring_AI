@@ -7,6 +7,10 @@ export function normalizeText(raw: string): string {
     .replace(/[​-‍⁠﻿­]/g, "") // zero-width chars, soft hyphen
     .replace(/[   \t]/g, " ") // non-breaking spaces, tabs
     .replace(/[ ]{2,}/g, "  ") // keep a double space (column separator), drop longer runs
+    // Designed PDFs often glue words together; split them so detection and redaction see separate tokens:
+    .replace(/(\p{L})(\+\d)/gu, "$1 $2") // "domain.co+91 98..." -> "domain.co +91 98..."
+    .replace(/(\p{Lu}{2,})(?=\p{Lu}\p{Ll}{2,})/gu, "$1 ") // "SHARMAProduct" -> "SHARMA Product"
+    .replace(/(\d{4,})(?=\p{L}{3,})/gu, "$1 ") // "43210linkedin.com" -> "43210 linkedin.com"
     .split("\n")
     .map((l) => l.replace(/\s+$/, ""))
     .join("\n")

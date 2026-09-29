@@ -64,7 +64,7 @@ export function detectEmails(text: string): Finding[] {
 
 // ---------------------------------------------------------------- phone
 // Candidate spans: optional +, digits with spaces / dashes / dots / parentheses. Validated by digit rules below.
-const PHONE_CANDIDATE = /(?<![\w₹$€£@/.%+-])(?:\+[ ]?)?\(?\d[\d \-().]{5,22}\d(?![\w%/@]|\.\d)/g;
+const PHONE_CANDIDATE = /(?<![\w₹$€£@/.%+-])(?:\+[ ]?)?\(?\d[\d \-().]{5,40}\d(?![\w%/@]|\.\d)/g;
 const YEAR_RANGE = /^(?:19|20)\d{2}\s*[-–]\s*(?:(?:19|20)\d{2}|\d{2})$/;
 
 export function isPhone(raw: string): boolean {
@@ -99,7 +99,20 @@ export function detectPhones(text: string): Finding[] {
     // trim trailing separators/punctuation the class may have swallowed
     v = v.replace(/[ \-(.]+$/, "");
     if (v.startsWith("(") && !v.includes(")")) { v = v.slice(1); start += 1; }
-    if (isPhone(v)) out.push({ type: "PHONE", value: v, start, end: start + v.length });
+    if (isPhone(v)) { out.push({ type: "PHONE", value: v, start, end: start + v.length }); continue; }
+    const digits = v.replace(/\D/g, "").length;
+    // A "+" run with more digits than one number holds (two numbers glued: "+91 98765 4321098765 43210"):
+    // remove the whole cluster rather than risk leaving half a number behind.
+    if (v.startsWith("+") && digits > 15) { out.push({ type: "PHONE", value: v, start, end: start + v.length }); continue; }
+    // Otherwise look for a valid number inside the run, group by group ("9876543210 12345").
+    const groups = [...v.matchAll(/\+?[\d()\-.]+/g)];
+    for (let i = 0; i < groups.length; i++) {
+      for (let j = Math.min(groups.length, i + 4); j > i; j--) {
+        const s0 = groups[i].index!, e0 = groups[j - 1].index! + groups[j - 1][0].length;
+        const sub = v.slice(s0, e0);
+        if (isPhone(sub)) { out.push({ type: "PHONE", value: sub, start: start + s0, end: start + e0 }); i = j - 1; break; }
+      }
+    }
   }
   return out;
 }
@@ -175,7 +188,11 @@ export function detectName(text: string, fullName: string): Finding[] {
 const NOT_NAME = new Set(("manager product senior junior associate executive engineer developer analyst consultant lead head director " +
   "officer operations logistics supply chain summary profile resume curriculum vitae objective experience education skills " +
   "contact details personal information designer founder intern specialist coordinator marketing sales business data " +
-  "software project program programme owner assistant student graduate professional career overview about").split(" "));
+  "software project program programme owner assistant student graduate professional career overview about work key core " +
+  "competencies achievements awards languages certifications certification interests hobbies references projects tools " +
+  "leadership impact positions responsibility extra curricular activities volunteering publications strategy growth " +
+  "analytics technical technology strengths highlights accomplishments expertise mba bba btech mtech university college " +
+  "institute school india mumbai pune delhi bengaluru bangalore hyderabad chennai kolkata linkedin github portfolio email phone").split(" "));
 const TITLE = /^(mr|mrs|ms|miss|dr|prof)\.?$/i;
 const titleCase = (w: string) => (w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
 
@@ -189,31 +206,54 @@ function nameFrom(segment: string): string {
   return words.map(titleCase).join(" ");
 }
 
+/** Name candidates from one line: whole line, first segment, text before a dash, leading ALL-CAPS words. */
+function lineCandidates(l: string): string[] {
+  const caps = l.match(/^((?:\p{Lu}{2,}[.'-]?\s+){1,3}\p{Lu}{2,})(?=\s|$)/u)?.[1] ?? "";
+  // A leading ALL-CAPS run ("ANANYA KULKARNI Product Manager") is the strongest shape, so it goes first.
+  return [caps, l.split(SEP)[0] ?? "", l.split(/\s+[—–-]\s+/)[0] ?? "", l];
+}
+
+const CONTACT = /@|\+\d|\b\d{5}\s?\d{5}\b|linkedin|github/i;
+
 /**
- * Find the candidate's name from the CV itself (no AI; runs before redaction):
- * 1. a "Name:" label; 2. the first header lines (whole line, or its first segment before a separator),
- * skipping job titles and headings; 3. the email local part, keeping only tokens that also appear as
- * capitalised words in the CV. Returns "" if nothing credible is found (the upload then fails closed).
+ * Find the candidate's name from the CV itself (no AI; runs before redaction). In order:
+ * 1. a "Name:" label; 2. the lines just above/below the contact line (email/phone/LinkedIn), wherever the PDF
+ * layout put it; 3. the first header lines; 4. the email local part cross-checked against capitalised words
+ * in the CV. Job titles and section headings are skipped. Returns "" if nothing credible is found, and the
+ * upload then fails closed (held back, never sent to the AI).
  */
 export function guessName(text: string): string {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  for (const l of lines.slice(0, 25)) {
+  const pick = (ls: string[]) => {
+    for (const l of ls) for (const c of lineCandidates(l)) { const n = nameFrom(c); if (n) return n; }
+    return "";
+  };
+  for (const l of lines.slice(0, 40)) {
     const m = l.match(/^(?:full\s+)?name\s*[:\-–]\s*(.+)$/i);
     if (m) { const n = nameFrom(m[1].split(SEP)[0] ?? ""); if (n) return n; }
   }
-  for (const l of lines.slice(0, 6)) {
-    if (SECTION_HEADING.test(l)) break;
-    for (const c of [l, l.split(SEP)[0] ?? "", l.split(/\s+[—–-]\s+/)[0] ?? ""]) {
-      const n = nameFrom(c);
-      if (n) return n;
-    }
+  const emailTokens = (text.match(EMAIL_RE)?.[0].split("@")[0].split(/[._\-+\d]+/) ?? []).filter((t) => t.length >= 3).map((t) => t.toLowerCase());
+  const top: string[] = [];
+  for (const l of lines.slice(0, 6)) { if (SECTION_HEADING.test(l)) break; top.push(l); }
+  const contactIdx = lines.findIndex((l) => CONTACT.test(l));
+  const near = contactIdx < 0 ? [] : [contactIdx - 1, contactIdx - 2, contactIdx, contactIdx + 1, contactIdx - 3]
+    .filter((i) => i >= 0 && i < lines.length).map((i) => lines[i]);
+  // Strongest signal: a candidate near the contact line (or at the top) that shares a token with the email address.
+  for (const l of [...near, ...top]) for (const c of lineCandidates(l)) {
+    const n = nameFrom(c);
+    if (n && emailTokens.length && n.toLowerCase().split(" ").some((w) => emailTokens.includes(w))) return n;
   }
-  const email = text.match(EMAIL_RE)?.[0];
-  if (email) {
-    const tokens = email.split("@")[0].split(/[._\-+\d]+/).filter((t) => t.length >= 3);
-    const found = tokens.filter((t) => new RegExp(`(?<![\\p{L}])${t[0].toUpperCase()}${t.slice(1).toLowerCase()}(?![\\p{L}])|(?<![\\p{L}])${t.toUpperCase()}(?![\\p{L}])`, "u").test(text))
-      .filter((t) => !NOT_NAME.has(t.toLowerCase()));
-    if (found.length >= 2) return found.slice(0, 3).map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase()).join(" ");
+  const t = pick(top) || pick(near);
+  if (t) return t;
+  // Email fallback: tokens that also appear as capitalised words; a single token takes the next capitalised word.
+  const words = [...text.matchAll(/\p{Lu}[\p{L}'-]+/gu)].map((m) => m[0]);
+  const isNameWord = (w: string) => !NOT_NAME.has(w.toLowerCase()) && /^\p{Lu}(\p{Ll}+|\p{Lu}+)$/u.test(w);
+  const found = emailTokens.filter((tk) => !NOT_NAME.has(tk) && words.some((w) => w.toLowerCase() === tk));
+  if (found.length >= 2) return found.slice(0, 3).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
+  if (found.length === 1) {
+    const i = words.findIndex((w) => w.toLowerCase() === found[0]);
+    const next = words[i + 1];
+    if (next && isNameWord(next) && next.toLowerCase() !== found[0]) return [words[i], next].map(titleCase).join(" ");
   }
   return "";
 }
