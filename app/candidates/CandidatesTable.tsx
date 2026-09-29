@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DecisionBadge, FlagChip } from "@/components/Badges";
 import { ROLE_LABEL } from "@/lib/decision";
 import type { DashboardRow } from "@/lib/views";
+import { NextStep } from "./NextStep";
 
 type Role = "PM" | "SPM";
 type SortKey = "rank" | "resumeId" | "name" | "score" | "dnaTriad" | "scoredAt";
@@ -19,7 +20,11 @@ function topFlags(flags: string[]) {
   return ranked.slice(0, 2);
 }
 
-export function CandidatesTable({ initialRole, data }: { initialRole: Role; data: Record<Role, { rows: DashboardRow[]; warnings: string[] }> }) {
+export function CandidatesTable({ initialRole, data, email }: {
+  initialRole: Role;
+  data: Record<Role, { rows: DashboardRow[]; warnings: string[] }>;
+  email: { ready: boolean; mode: "redirect" | "live"; redirectTo: string | null; problem: string | null };
+}) {
   const router = useRouter();
   const [role, setRole] = useState<Role>(initialRole);
   const [q, setQ] = useState("");
@@ -37,6 +42,12 @@ export function CandidatesTable({ initialRole, data }: { initialRole: Role; data
   }
 
   const { rows, warnings } = data[role];
+  const deliverTo = (r: DashboardRow) => (email.mode === "redirect" ? `${email.redirectTo} (test)` : blind ? r.resumeId : (r.email ?? ""));
+  const counts = {
+    toSend: rows.filter((r) => r.outreach && r.outreach.status !== "sent" && r.nextAction !== "decide").length,
+    decide: rows.filter((r) => r.nextAction === "decide").length,
+    sent: rows.filter((r) => r.outreach?.status === "sent").length,
+  };
   const view = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const filtered = rows.filter((r) => !needle || r.resumeId.toLowerCase().includes(needle) || (!blind && r.name.toLowerCase().includes(needle)));
@@ -67,6 +78,19 @@ export function CandidatesTable({ initialRole, data }: { initialRole: Role; data
       </div>
 
       <div id="cand-panel" role="tabpanel" aria-labelledby={`tab-${role}`} className="pt-4">
+        <dl className="mb-4 grid grid-cols-3 gap-3 text-sm sm:max-w-lg">
+          {[["Drafts ready to send", counts.toSend], ["Waiting for your decision", counts.decide], ["Emails sent", counts.sent]].map(([k, n]) => (
+            <div key={k as string} className="rounded-lg border border-line px-3 py-2">
+              <dt className="text-xs text-muted">{k}</dt><dd className="text-xl font-semibold tabular-nums">{n}</dd>
+            </div>
+          ))}
+        </dl>
+        {!email.ready && (
+          <p role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Email sending is off: {email.problem}</p>
+        )}
+        {email.ready && email.mode === "redirect" && (
+          <p role="status" className="mb-4 rounded-md border border-line bg-surface px-3 py-2 text-sm text-muted">Test mode: every email is delivered to {email.redirectTo}, never to candidates.</p>
+        )}
         {warnings.map((w) => (
           <p key={w} role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <span aria-hidden="true">⚠ </span>{w}
@@ -101,12 +125,12 @@ export function CandidatesTable({ initialRole, data }: { initialRole: Role; data
                 {th("rank", "Rank", "w-16")}{th("resumeId", "Resume ID", "whitespace-nowrap")}{th("name", "Name")}
                 <th scope="col">Applied role</th><th scope="col">Decision</th>
                 {th("score", "Score", "text-right")}{th("dnaTriad", "DNA triad", "text-right")}
-                <th scope="col">Top flags</th>{th("scoredAt", "Scored at")}
+                <th scope="col">Top flags</th><th scope="col">Next step</th>{th("scoredAt", "Scored at")}
               </tr>
             </thead>
             <tbody>
               {view.length === 0 && (
-                <tr><td colSpan={9} className="py-10 text-center text-muted">
+                <tr><td colSpan={10} className="py-10 text-center text-muted">
                   {rows.length ? "No matches." : <>No scored candidates for this role yet. <Link href="/" className="text-accent underline">Upload a CV</Link> or <Link href="/examples" className="text-accent underline">run an example</Link>.</>}
                 </td></tr>
               )}
@@ -120,6 +144,7 @@ export function CandidatesTable({ initialRole, data }: { initialRole: Role; data
                   <td className="text-right font-semibold tabular-nums">{r.score.toFixed(1)}</td>
                   <td className="text-right tabular-nums">{r.dnaTriad}/9</td>
                   <td><div className="flex flex-wrap gap-1">{topFlags(r.flags).map((f) => <FlagChip key={f} flag={f} />)}</div></td>
+                  <td onClick={(e) => e.stopPropagation()}><NextStep row={r} emailReady={email.ready} deliverTo={deliverTo} /></td>
                   <td className="whitespace-nowrap text-muted">{new Date(r.scoredAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</td>
                 </tr>
               ))}

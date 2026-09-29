@@ -5,7 +5,9 @@ import { DecisionBadge, FlagChip, PassFail } from "@/components/Badges";
 import { BAND_LABEL, bonusLabel, penaltyLabel, ROLE_LABEL } from "@/lib/decision";
 import { isResumeId } from "@/lib/ids/resumeId";
 import { CFG } from "@/lib/scoring/config";
+import { getFollowUp } from "@/lib/followup";
 import { getResultView } from "@/lib/views";
+import { FollowUpPanel } from "./FollowUpPanel";
 
 export const metadata: Metadata = { title: "Result" };
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ export default async function ResultPage({ params }: PageProps<"/results/[resume
       </div>
     );
   }
+  const followUp = await getFollowUp(resumeId);
   const s = v.score;
   const demoted = v.finalBand !== s.band;
   const penPts = (id: string) => CFG.penalties.items.find((p) => p.id === id)?.points ?? 0;
@@ -180,6 +183,11 @@ export default async function ResultPage({ params }: PageProps<"/results/[resume
           )}
         </section>
       </div>
+
+      {followUp && (
+        <FollowUpPanel resumeId={resumeId} initial={followUp} candidateEmail={v.identity.email}
+          firstName={v.identity.full_name.split(/\s+/)[0] ?? ""} recommendation={`${BAND_LABEL[v.finalBand]} (${fmt(s.score)})`} />
+      )}
 
       <details className="rounded-lg border border-line p-5 text-sm">
         <summary className="cursor-pointer font-semibold">About this ranking</summary>

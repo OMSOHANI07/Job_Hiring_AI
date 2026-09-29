@@ -74,10 +74,58 @@ export interface ScoreRow {
 
 export type AuditEvent =
   | "uploaded" | "redacted" | "redaction_failed" | "confirmed" | "extraction_ok" | "extraction_failed"
-  | "scored" | "exported" | "duplicate" | "re_redacted" | "login_failed";
+  | "scored" | "exported" | "duplicate" | "re_redacted" | "login_failed"
+  | "brief_generated" | "brief_failed" | "email_drafted" | "email_edited" | "email_sent" | "email_failed" | "decision_recorded";
+
+/** Interview brief generated from redacted inputs only. Contains no PII. */
+export interface BriefRow {
+  resume_id: string;
+  brief: InterviewBrief;
+  model: string;
+  prompt_version: string;
+  created_at: string;
+}
+
+export interface InterviewBrief {
+  summary: string;
+  strengths: { criterion: string; point: string; evidence: string }[];
+  risks: { criterion: string; point: string }[];
+  questions: { criterion: string; question: string; listen_for: string }[];
+  logistics: string[];
+}
+
+export type EmailKind = "invite" | "rejection";
+export type EmailStatus = "draft" | "sending" | "sent" | "failed";
+
+/**
+ * Email draft. Stored as a template with [CANDIDATE_FIRST_NAME] and the model never sees the name;
+ * the real name and address are merged in only at send time.
+ */
+export interface EmailRow {
+  id: string;
+  resume_id: string;
+  kind: EmailKind;
+  subject: string;
+  body: string;
+  status: EmailStatus;
+  model: string | null;
+  provider_id: string | null;
+  delivery_mode: "redirect" | "live" | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+  sent_at: string | null;
+}
+
+/** Arjun's own call. The system recommends; this is the decision. */
+export interface DecisionRow {
+  resume_id: string;
+  action: "invite" | "reject";
+  created_at: string;
+}
 
 export interface Store {
-  readonly driver: "local" | "supabase";
+  readonly driver: "local" | "supabase" | "neon";
   idExists(resumeId: string): Promise<boolean>;
   findByHash(cvHash: string, role: Role): Promise<ResumeRow | null>;
   findByEmailRole(email: string, role: Role): Promise<string | null>;
@@ -95,6 +143,19 @@ export interface Store {
   getScores(resumeId: string): Promise<ScoreRow[]>;
   listScores(role?: Role): Promise<ScoreRow[]>;
   listResumes(): Promise<ResumeRow[]>;
+  saveBrief(row: Omit<BriefRow, "created_at">): Promise<void>;
+  getBrief(resumeId: string): Promise<BriefRow | null>;
+  /** One current draft per resume: replaces any unsent draft. */
+  saveEmailDraft(row: Pick<EmailRow, "resume_id" | "kind" | "subject" | "body" | "model">): Promise<EmailRow>;
+  getEmail(resumeId: string): Promise<EmailRow | null>;
+  updateEmail(id: string, patch: Partial<Omit<EmailRow, "id" | "resume_id">>): Promise<void>;
+  /** Atomically move an email from one status to another; false if it wasn't in `from` (prevents double send). */
+  transitionEmail(id: string, from: EmailStatus[], to: EmailStatus): Promise<boolean>;
+  listEmails(): Promise<EmailRow[]>;
+  setDecision(resumeId: string, action: DecisionRow["action"]): Promise<void>;
+  getDecision(resumeId: string): Promise<DecisionRow | null>;
+  listDecisions(): Promise<DecisionRow[]>;
+  listBriefIds(): Promise<string[]>;
   audit(event: AuditEvent, resumeId: string | null, payload?: Record<string, unknown>): Promise<void>;
   listAudit(resumeId: string): Promise<{ event: AuditEvent; payload: unknown; created_at: string }[]>;
 }

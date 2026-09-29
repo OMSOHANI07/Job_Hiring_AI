@@ -2,7 +2,9 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { AuditEvent, ExtractionRow, PiiRow, ResumeRow, ScoreRow, Store } from "./types";
+import type {
+  AuditEvent, BriefRow, DecisionRow, EmailRow, EmailStatus, ExtractionRow, PiiRow, ResumeRow, ScoreRow, Store,
+} from "./types";
 
 // Local development store: one JSON file plus an originals folder under .data/ (gitignored, contains PII).
 // Not for production: serverless filesystems are not persistent. Use STORAGE_DRIVER=supabase there.
@@ -12,10 +14,15 @@ interface Db {
   resumes: ResumeRow[];
   extractions: ExtractionRow[];
   scores: ScoreRow[];
+  briefs: BriefRow[];
+  emails: EmailRow[];
+  decisions: DecisionRow[];
   audit_log: { id: number; resume_id: string | null; event: AuditEvent; payload: unknown; created_at: string }[];
 }
 
-const empty = (): Db => ({ candidate_pii: [], resumes: [], extractions: [], scores: [], audit_log: [] });
+const empty = (): Db => ({
+  candidate_pii: [], resumes: [], extractions: [], scores: [], briefs: [], emails: [], decisions: [], audit_log: [],
+});
 
 export class LocalStore implements Store {
   readonly driver = "local" as const;
@@ -103,6 +110,51 @@ export class LocalStore implements Store {
   async getScores(id: string) { return this.read().scores.filter((s) => s.resume_id === id); }
   async listScores(role?: string) { return this.read().scores.filter((s) => !role || s.role === role); }
   async listResumes() { return this.read().resumes; }
+  saveBrief(row: Omit<BriefRow, "created_at">) {
+    return this.mutate((db) => {
+      db.briefs = db.briefs.filter((b) => b.resume_id !== row.resume_id);
+      db.briefs.push({ ...row, created_at: new Date().toISOString() });
+    });
+  }
+  async getBrief(id: string) { return this.read().briefs.find((b) => b.resume_id === id) ?? null; }
+  async listBriefIds() { return this.read().briefs.map((b) => b.resume_id); }
+  saveEmailDraft(row: Pick<EmailRow, "resume_id" | "kind" | "subject" | "body" | "model">) {
+    return this.mutate((db) => {
+      if (db.emails.some((e) => e.resume_id === row.resume_id && (e.status === "sent" || e.status === "sending"))) {
+        throw new Error("An email has already been sent for this candidate.");
+      }
+      db.emails = db.emails.filter((e) => e.resume_id !== row.resume_id);
+      const now = new Date().toISOString();
+      const email: EmailRow = { ...row, id: randomUUID(), status: "draft", provider_id: null, delivery_mode: null, error: null, created_at: now, updated_at: now, sent_at: null };
+      db.emails.push(email);
+      return email;
+    });
+  }
+  async getEmail(id: string) { return this.read().emails.find((e) => e.resume_id === id) ?? null; }
+  updateEmail(id: string, patch: Partial<Omit<EmailRow, "id" | "resume_id">>) {
+    return this.mutate((db) => {
+      const e = db.emails.find((x) => x.id === id);
+      if (e) Object.assign(e, patch, { updated_at: new Date().toISOString() });
+    });
+  }
+  transitionEmail(id: string, from: EmailStatus[], to: EmailStatus) {
+    return this.mutate((db) => {
+      const e = db.emails.find((x) => x.id === id);
+      if (!e || !from.includes(e.status)) return false;
+      e.status = to;
+      e.updated_at = new Date().toISOString();
+      return true;
+    });
+  }
+  async listEmails() { return this.read().emails; }
+  setDecision(id: string, action: DecisionRow["action"]) {
+    return this.mutate((db) => {
+      db.decisions = db.decisions.filter((d) => d.resume_id !== id);
+      db.decisions.push({ resume_id: id, action, created_at: new Date().toISOString() });
+    });
+  }
+  async getDecision(id: string) { return this.read().decisions.find((d) => d.resume_id === id) ?? null; }
+  async listDecisions() { return this.read().decisions; }
   audit(event: AuditEvent, resumeId: string | null, payload?: Record<string, unknown>) {
     return this.mutate((db) => {
       db.audit_log.push({ id: db.audit_log.length + 1, resume_id: resumeId, event, payload: payload ?? null, created_at: new Date().toISOString() });

@@ -76,7 +76,8 @@ describe("CSV", () => {
   it("blind export drops names and contacts", () => {
     const row: DashboardRow = { rank: 1, resumeId: "KRG-2026-EXPRT1", name: "Test Person", email: "t@example.com", phone: "+91 1", appliedRole: "PM",
       band: "review", preCapacityBand: "review", decision: "Review – Arjun decides", score: 70, dnaTriad: 6, flags: [], levels: { P1: 2 },
-      penalties: [], bonuses: [], gateFailed: null, scoredAt: "" };
+      penalties: [], bonuses: [], gateFailed: null, scoredAt: "",
+      nextAction: "decide", decidedByArjun: false, hasBrief: false, outreach: null };
     const out = allCandidatesRows([row], "PM", true)[0];
     expect(out.slice(2, 5)).toEqual(["", "", ""]);
     expect(allCandidatesHeader("PM")).toContain("P8_level");

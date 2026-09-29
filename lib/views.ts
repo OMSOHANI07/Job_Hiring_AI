@@ -2,7 +2,7 @@ import "server-only";
 import { getStore } from "@/lib/db/client";
 import { getDisplayIdentities, getDisplayIdentity, type DisplayIdentity } from "@/lib/db/queries";
 import type { ExtractionRow, ResumeRow, ScoreRow } from "@/lib/db/types";
-import { DECISION } from "@/lib/decision";
+import { DECISION, nextAction, type NextAction } from "@/lib/decision";
 import { CFG, RULE_THRESHOLDS } from "@/lib/scoring/config";
 import { rankRole } from "@/lib/scoring/rank";
 import type { AppliedEvaluation, Band, CandidateResult, Role } from "@/lib/scoring/types";
@@ -59,6 +59,10 @@ export interface DashboardRow {
   bonuses: string[];
   gateFailed: string | null;
   scoredAt: string;
+  nextAction: NextAction;
+  decidedByArjun: boolean;
+  hasBrief: boolean;
+  outreach: { kind: "invite" | "rejection"; status: "draft" | "sending" | "sent" | "failed"; sentAt: string | null; mode: string | null } | null;
 }
 
 /** Ranked, capacity-capped list for one role. Each CV appears only under the role it was submitted for. */
@@ -67,7 +71,12 @@ export async function getRoleRanking(role: Role): Promise<{ rows: DashboardRow[]
   const scores = (await store.listScores(role)).filter((s) => s.is_applied_role);
   const byId = new Map(scores.map((s) => [s.resume_id, s]));
   const { ranked, warnings } = rankRole(scores.map(asCandidate));
-  const ids = await getDisplayIdentities(ranked.map((r) => r.candidate_id));
+  const [ids, emails, decisions, briefIds] = await Promise.all([
+    getDisplayIdentities(ranked.map((r) => r.candidate_id)), store.listEmails(), store.listDecisions(), store.listBriefIds(),
+  ]);
+  const emailBy = new Map(emails.map((e) => [e.resume_id, e]));
+  const decisionBy = new Map(decisions.map((d) => [d.resume_id, d]));
+  const briefSet = new Set(briefIds);
   const rows = ranked.map((r, i): DashboardRow => {
     const s = byId.get(r.candidate_id)!;
     const who = ids.get(r.candidate_id);
@@ -76,6 +85,13 @@ export async function getRoleRanking(role: Role): Promise<{ rows: DashboardRow[]
       appliedRole: role, band: r.applied.band, preCapacityBand: s.band, decision: DECISION[r.applied.band].label,
       score: r.applied.score, dnaTriad: r.applied.dna_triad, flags: r.applied.flags, levels: r.applied.levels,
       penalties: r.applied.penalties, bonuses: r.applied.bonuses, gateFailed: r.applied.gate_failed, scoredAt: s.created_at,
+      nextAction: nextAction(r.applied.band, decisionBy.get(r.candidate_id) ?? null),
+      decidedByArjun: decisionBy.has(r.candidate_id),
+      hasBrief: briefSet.has(r.candidate_id),
+      outreach: (() => {
+        const e = emailBy.get(r.candidate_id);
+        return e ? { kind: e.kind, status: e.status, sentAt: e.sent_at, mode: e.delivery_mode } : null;
+      })(),
     };
   });
   return { rows, warnings: scores.length ? warnings : [] };

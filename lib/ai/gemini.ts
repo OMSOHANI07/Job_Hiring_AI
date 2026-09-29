@@ -43,7 +43,7 @@ export const realGenerate: GenerateFn = async (req) => {
   return res.text ?? "";
 };
 
-function isTransient(e: unknown): boolean {
+export function isTransient(e: unknown): boolean {
   const status = (e as { status?: number })?.status;
   const msg = String((e as Error)?.message ?? e);
   return status === 429 || (status !== undefined && status >= 500) || /timeout|timed out|ECONNRESET|fetch failed|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(msg);

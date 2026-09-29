@@ -16,9 +16,9 @@ what the AI will see, and it returns a deterministic, explainable score with a d
 | System | Context | Extracts candidate info and prepares data. **Personal details excluded from the AI** | ✅ deterministic redaction + fail-closed verification + founder confirmation |
 | System | Processing | Scores the candidate against the rubric | ✅ **applied role only** (see below) |
 | AI (LLM) | AI | Evidence extraction from redacted text | ✅ Gemini, structured JSON, temperature 0 |
-| AI (LLM) | AI | Interview brief + personalised email | ⏭ next phase |
-| Email (Resend) | Send | Sends email when founder clicks send | ⏭ next phase |
-| Founder | Output | Dashboard with ranked candidates and scores | ✅ result table, ranked dashboard, CSV / XLSX / JSON |
+| AI (LLM) | AI | Interview brief + personalised email (invite or rejection) | ✅ from redacted inputs; the name is filled in only at send time |
+| Email (Resend) | Send | Sends email when founder clicks send | ✅ one-click send with confirm; test mode redirects every email to you |
+| Founder | Output | Hiring dashboard: ranked candidates, scores, interview brief, draft emails (one-click send) | ✅ plus CSV / XLSX / JSON exports |
 
 **Scoring scope decision (Arjun, 28 Sep 2026):** a CV is scored **only** against the rubric of the role it was submitted for.
 There is no other-role score and no cross-role routing. The reference engine's `evaluate_candidate()` (both roles plus routing)
@@ -50,6 +50,25 @@ What reaches Gemini: the system prompt and schema from `KARGO_RUBRICS.md` §3, t
 applied role, and the **redacted** CV text. Nothing else. Some Gemini tiers may use prompts to improve Google's products,
 which is one more reason redaction happens first and is verified twice (at upload and again just before the call).
 
+## After scoring: brief, email, send
+
+The `email_policy` in the rubric config decides what gets drafted:
+
+| Final band (after capacity caps) | Brief | Email draft |
+|---|---|---|
+| Accept – Priority | ✅ | Interview invite with 3 slots within 5 working days (IST, Mon–Fri) |
+| Accept | ✅ | Interview invite with 3 slots within 7 working days |
+| Review – Arjun decides | after Arjun clicks **Invite** | nothing until Arjun clicks **Invite** or **Reject** |
+| Reject | – | Warm, role-specific rejection |
+
+Arjun can override any recommendation with **Invite** / **Reject** on the result page. Nothing is ever sent without his click.
+
+- **Brief** (`lib/ai/brief.ts`): summary, strengths with *verbatim* evidence (checked against the CV text), risks to test, and 4–6 interview questions built from the rubric probes. Logistics lines (relocation, level fit) come from code.
+- **Email** (`lib/ai/email.ts`): the model gets redacted highlights and the slots, never the name. Drafts are stored as templates with `[CANDIDATE_FIRST_NAME]`, and the real first name and address are merged in only at send time. Rejections pass a wording guard: no scores, criteria names, rubric, penalties, "DNA", ranking or AI mentions. A violating draft is retried once, then replaced by a safe template.
+- **Send** (`lib/email/resend.ts`): one Resend call with an idempotency key, guarded by a `draft → sending → sent` transition so a double click can't send twice.
+  - `EMAIL_MODE=redirect` (default): every email goes to `EMAIL_REDIRECT_TO`, subject prefixed `[TEST]`, with a banner showing the real recipient. With Resend's `onboarding@resend.dev` sender, that must be the email of your Resend account.
+  - `EMAIL_MODE=live`: sends to candidates. Requires `RESEND_FROM` on a domain verified in Resend.
+
 ## Setup
 
 Requires Node 20+ (tested on Node 24). Python 3 is only needed for the parity script.
@@ -66,16 +85,27 @@ npm run dev                       # http://localhost:3000
 |---|---|---|
 | `GEMINI_API_KEY` | server only | Google AI Studio key |
 | `GEMINI_MODEL` | server only | default `gemini-3.8-flash` (verified against the models list on 28 Sep 2026) |
-| `STORAGE_DRIVER` | server only | `local` (dev: JSON file in `.data/`) or `supabase` (required on Vercel) |
+| `STORAGE_DRIVER` | server only | `local` (dev: JSON file in `.data/`), `neon` or `supabase` |
+| `DATABASE_URL` | server only | Neon connection string (Neon dashboard → Connect) |
+| `RESEND_API_KEY` | server only | Resend API key |
+| `RESEND_FROM` | server only | default `Kargo Hiring <onboarding@resend.dev>`; live mode needs a verified domain |
+| `EMAIL_MODE` | server only | `redirect` (default, test) or `live` |
+| `EMAIL_REDIRECT_TO` | server only | where test-mode emails go |
 | `SUPABASE_URL` | server only | |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | never sent to the browser |
 | `SUPABASE_ANON_KEY` | RLS test only | used by `tests/rls-check.ts` to prove the anon key is denied |
 | `APP_PASSWORD` | server only | Arjun's login password |
 | `SESSION_SECRET` | server + proxy | 32+ random bytes, e.g. `openssl rand -base64 32` |
 
-### Supabase
+### Neon (recommended database)
 
-1. Run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) in the Supabase SQL editor (or `supabase db push`).
+1. Create a project in Neon and copy the connection string into `DATABASE_URL` in `.env.local`.
+2. Run `npm run db:neon`. It applies [`db/neon/0001_init.sql`](db/neon/0001_init.sql) (all tables, with original CV files in a `bytea` table since Neon has no file storage), verifies each table, and does a write/read round trip.
+3. Set `STORAGE_DRIVER=neon`. Access is only through the server-side connection string; nothing is exposed to the browser.
+
+### Supabase (alternative)
+
+1. Run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) and [`0002_brief_email.sql`](supabase/migrations/0002_brief_email.sql) in the Supabase SQL editor (or `supabase db push`).
    It creates the five tables, enables **RLS with no policies** on each (only the service role can access them), and creates
    the **private** `cv-originals` bucket.
 2. Set `STORAGE_DRIVER=supabase` plus the three Supabase variables.
@@ -88,10 +118,11 @@ npm run dev                       # http://localhost:3000
 npm test               # vitest unit tests (engine parity, PII, parsing, AI payload, store, exports)
 npm run parity         # Python reference vs TypeScript port on fixtures + 500 randomised extractions
 npm run test:e2e       # real Gemini: both samples, asserts decisions and PII-free payloads
+npx tsx --conditions=react-server --env-file=.env.local tests/e2e/followup.ts   # real Gemini brief + email drafts; sends nothing
 npm run secret-scan    # also runs automatically as a git pre-commit hook (.githooks/)
 ```
 
-Results at the time of writing: **136 unit tests passing**. Parity: **8,476 / 8,476 checks identical** with 2,000 random
+Results at the time of writing: **148 unit tests passing** (including brief/email policy, the rejection guard, and send with a mocked Resend). Parity: **8,476 / 8,476 checks identical** with 2,000 random
 extractions (default runs use 500). **E2E 12 / 12**. See [`samples/expected_outputs.md`](samples/expected_outputs.md).
 
 ## How the scoring works
@@ -155,10 +186,9 @@ API routes run on the Node.js runtime; `/api/score/*` has `maxDuration = 60` (a 
 
 ## Next phase
 
-- Interview brief generation (LLM, redacted inputs)
-- Email drafts per `email_policy` (invite / warm rejection; nothing for Review until Arjun decides)
-- Resend one-click send
 - Bulk upload
+- Calendar integration for interview slots (slots are proposed in code today)
+- Resend webhooks for delivery / bounce status
 - Optional: re-enable cross-role scoring and routing if Arjun wants it (already implemented and tested in the engine)
 
 ## Repository layout
@@ -168,12 +198,15 @@ app/                 pages (login, upload, review, results, candidates, examples
 lib/scoring/         TypeScript port of the reference engine (config, levels, evaluate, rank, explain)
 lib/pii/             detectors, redaction, verification, location status
 lib/ai/              Gemini client, prompt (generated from KARGO_RUBRICS.md §3), zod schema
-lib/db/              store interface, local JSON driver, Supabase driver
+lib/db/              store interface, local JSON / Neon / Supabase drivers
+lib/followup.ts      brief + email drafting per email_policy, Arjun's decision, one-click send
+lib/email/           Resend client (test/live modes), interview slot proposals
 lib/export/          CSV / XLSX builders
 rubrics/             KARGO_RUBRICS.md, kargo_rubrics_config.json (source of truth)
 reference/           Python reference engine + tests (parity checks)
 samples/             sample CVs (.docx + source), expected_outputs.md
-supabase/migrations/ 0001_init.sql
+db/neon/             0001_init.sql (full Neon schema)
+supabase/migrations/ 0001_init.sql, 0002_brief_email.sql
 tests/               unit tests, E2E, RLS check
 proxy.ts             auth guard (Next 16's name for middleware)
 ```

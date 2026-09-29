@@ -12,10 +12,12 @@
     "test:e2e": "tsx --conditions=react-server --env-file=.env.local tests/e2e/run.ts",
     "parity": "tsx --conditions=react-server scripts/parity.ts",
     "secret-scan": "bash scripts/secret-scan.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:neon": "tsx --env-file=.env.local scripts/neon-setup.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@supabase/supabase-js": "^2.117.2",
     "exceljs": "^4.4.0",
     "mammoth": "^1.13.0",

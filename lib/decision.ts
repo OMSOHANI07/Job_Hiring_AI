@@ -1,6 +1,19 @@
 // Display-only decision labels. The band stays the source of truth (build spec §10).
 import type { Band } from "@/lib/scoring/types";
 
+export type NextAction = "invite" | "reject" | "decide";
+
+/**
+ * email_policy: Priority/Shortlist -> invite, Not shortlisted -> rejection, Review -> Arjun decides first.
+ * Arjun's recorded decision always overrides the recommendation.
+ */
+export function nextAction(finalBand: Band, decision: { action: "invite" | "reject" } | null): NextAction {
+  if (decision) return decision.action;
+  if (finalBand === "priority_shortlist" || finalBand === "shortlist") return "invite";
+  if (finalBand === "not_shortlisted") return "reject";
+  return "decide";
+}
+
 export const DECISION: Record<Band, { label: string; short: string; tone: "priority" | "accept" | "review" | "reject" }> = {
   priority_shortlist: { label: "Accept – Priority", short: "Accept – Priority", tone: "priority" },
   shortlist: { label: "Accept", short: "Accept", tone: "accept" },

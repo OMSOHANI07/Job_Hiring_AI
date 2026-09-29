@@ -67,13 +67,15 @@ export async function uploadCv(input: {
   const emailMatch = fields.email ? await store.findByEmailRole(fields.email, input.role) : null;
   const now = new Date().toISOString();
   const pii: PiiRow = { resume_id: resumeId, full_name: name || "(name not detected)", ...fields, created_at: now };
-  const storagePath = await store.saveOriginal(resumeId, kind, input.data, MIME[kind]);
   const resume: ResumeRow = {
     resume_id: resumeId, applied_role: input.role, file_name: sanitizeFileName(input.fileName), file_type: kind,
-    storage_path: storagePath, cv_hash: hash, redacted_text: red.redactedText, redaction_counts: red.report.counts,
+    storage_path: null, cv_hash: hash, redacted_text: red.redactedText, redaction_counts: red.report.counts,
     location_status: loc, status, created_at: now,
   };
   await store.createResume(pii, resume);
+  // original file after the rows exist (Neon keeps it in a table with a foreign key to candidate_pii)
+  const storagePath = await store.saveOriginal(resumeId, kind, input.data, MIME[kind]);
+  await store.updateResume(resumeId, { storage_path: storagePath });
   await store.audit("uploaded", resumeId, { file_type: kind, applied_role: input.role, bytes: input.data.byteLength });
   const leakTypes = [...new Set(check.leaks.map((l) => l.type))];
   if (status === "redacted") await store.audit("redacted", resumeId, { counts: red.report.counts });

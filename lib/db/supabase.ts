@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { AuditEvent, ExtractionRow, PiiRow, ResumeRow, ScoreRow, Store } from "./types";
+import type {
+  AuditEvent, BriefRow, DecisionRow, EmailRow, EmailStatus, ExtractionRow, PiiRow, ResumeRow, ScoreRow, Store,
+} from "./types";
 
 // Supabase store. Uses the service-role key, server-side only. RLS is on with no policies, so the anon key
 // can't read anything; see tests/rls-check.ts.
@@ -96,6 +98,43 @@ export class SupabaseStore implements Store {
     return (this.check(await q) as Record<string, unknown>[]).map(scoreFromDb);
   }
   async listResumes() { return this.check(await this.db.from("resumes").select("*")) as ResumeRow[]; }
+  async saveBrief(row: Omit<BriefRow, "created_at">) {
+    this.check(await this.db.from("interview_briefs").upsert({ ...row, created_at: new Date().toISOString() }));
+  }
+  async getBrief(id: string) {
+    return this.check(await this.db.from("interview_briefs").select("*").eq("resume_id", id).maybeSingle()) as BriefRow | null;
+  }
+  async listBriefIds() {
+    return (this.check(await this.db.from("interview_briefs").select("resume_id")) as { resume_id: string }[]).map((r) => r.resume_id);
+  }
+  async saveEmailDraft(row: Pick<EmailRow, "resume_id" | "kind" | "subject" | "body" | "model">) {
+    const existing = await this.getEmail(row.resume_id);
+    if (existing && (existing.status === "sent" || existing.status === "sending")) throw new Error("An email has already been sent for this candidate.");
+    const data = this.check(await this.db.from("emails").upsert(
+      { ...row, status: "draft", error: null, provider_id: null, delivery_mode: null, updated_at: new Date().toISOString() },
+      { onConflict: "resume_id" },
+    ).select("*").single());
+    return data as EmailRow;
+  }
+  async getEmail(id: string) {
+    return this.check(await this.db.from("emails").select("*").eq("resume_id", id).maybeSingle()) as EmailRow | null;
+  }
+  async updateEmail(id: string, patch: Partial<Omit<EmailRow, "id" | "resume_id">>) {
+    this.check(await this.db.from("emails").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id));
+  }
+  async transitionEmail(id: string, from: EmailStatus[], to: EmailStatus) {
+    const rows = this.check(await this.db.from("emails").update({ status: to, updated_at: new Date().toISOString() })
+      .eq("id", id).in("status", from).select("id")) as { id: string }[];
+    return rows.length === 1;
+  }
+  async listEmails() { return this.check(await this.db.from("emails").select("*")) as EmailRow[]; }
+  async setDecision(id: string, action: DecisionRow["action"]) {
+    this.check(await this.db.from("decisions").upsert({ resume_id: id, action, created_at: new Date().toISOString() }));
+  }
+  async getDecision(id: string) {
+    return this.check(await this.db.from("decisions").select("*").eq("resume_id", id).maybeSingle()) as DecisionRow | null;
+  }
+  async listDecisions() { return this.check(await this.db.from("decisions").select("*")) as DecisionRow[]; }
   async audit(event: AuditEvent, resumeId: string | null, payload?: Record<string, unknown>) {
     this.check(await this.db.from("audit_log").insert({ event, resume_id: resumeId, payload: payload ?? null }));
   }

@@ -3,20 +3,26 @@
 # or any actual value from .env.local. Never prints the matched value.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PATTERNS='AIza[0-9A-Za-z_-]{20,}|AQ\.Ab[0-9A-Za-z_-]{20,}|eyJ[0-9A-Za-z_-]{20,}\.|sb_secret[_][0-9A-Za-z_-]{16,}|service_role"?\s*[:=]\s*"?eyJ'
+PATTERNS='re_[A-Za-z0-9]{8}_[A-Za-z0-9]{16,}|postgres(ql)?://[^:@/ ${}]+:[^@/ ${}]+@|AIza[0-9A-Za-z_-]{20,}|AQ\.Ab[0-9A-Za-z_-]{20,}|eyJ[0-9A-Za-z_-]{20,}\.|sb_secret[_][0-9A-Za-z_-]{16,}|service_role"?\s*[:=]\s*"?eyJ'
+# Documentation placeholders inside third-party libraries (never real credentials).
+ALLOW='user:(\\+n)?password@|://\$\{'
 fail=0
 if [[ "${1:-}" == "--dir" ]]; then
   target="$2"
-  if grep -rEIl "$PATTERNS" "$target" 2>/dev/null; then echo "secret-scan: pattern match in files above"; fail=1; fi
+  hits=$( { grep -rEIoh "$PATTERNS" "$target" 2>/dev/null || true; } | { grep -vE "$ALLOW" || true; } | wc -l | tr -d ' ')
+  if [[ "$hits" != "0" ]]; then
+    grep -rEIl "$PATTERNS" "$target" 2>/dev/null | while read -r f; do grep -EIoh "$PATTERNS" "$f" | grep -vqE "$ALLOW" && echo "$f"; done
+    echo "secret-scan: $hits pattern match(es) in files above"; fail=1
+  fi
 else
   diff=$(git diff --cached -U0 --no-color || true)
-  if echo "$diff" | grep -Eq "$PATTERNS"; then echo "secret-scan: secret-like pattern in staged diff"; fail=1; fi
+  if { echo "$diff" | grep -Eo "$PATTERNS" || true; } | grep -vqE "$ALLOW"; then echo "secret-scan: secret-like pattern in staged diff"; fail=1; fi
 fi
 # actual values from .env.local (only long ones, to avoid trivial matches)
 if [[ -f .env.local ]]; then
   while IFS='=' read -r k v; do
     [[ -z "${k// }" || "$k" == \#* ]] && continue
-    case "$k" in GEMINI_MODEL|STORAGE_DRIVER|SUPABASE_URL|LOCAL_DATA_DIR) continue ;; esac  # not secrets
+    case "$k" in GEMINI_MODEL|STORAGE_DRIVER|SUPABASE_URL|LOCAL_DATA_DIR|RESEND_FROM|EMAIL_MODE|EMAIL_REDIRECT_TO) continue ;; esac  # not secrets
     v="${v%%#*}"; v="$(echo -n "$v" | xargs)"
     [[ ${#v} -lt 12 ]] && continue
     if [[ "${1:-}" == "--dir" ]]; then
