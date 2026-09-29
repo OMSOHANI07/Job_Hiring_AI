@@ -5,7 +5,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -f .env.local ]] || { echo "missing .env.local"; exit 1; }
-set -a; source .env.local; set +a
+# read KEY=VALUE lines literally (values may contain <, >, &, spaces)
+env_get() { local line; line=$(grep -m1 "^$1=" .env.local || true); line="${line#*=}"; printf '%s' "${line%%  #*}"; }
+DATABASE_URL=$(env_get DATABASE_URL); GEMINI_API_KEY=$(env_get GEMINI_API_KEY); GEMINI_MODEL=$(env_get GEMINI_MODEL)
+RESEND_API_KEY=$(env_get RESEND_API_KEY); RESEND_FROM=$(env_get RESEND_FROM); EMAIL_MODE=$(env_get EMAIL_MODE)
+EMAIL_REDIRECT_TO=$(env_get EMAIL_REDIRECT_TO)
 [[ -n "${DATABASE_URL:-}" ]] || { echo "Set DATABASE_URL (Neon) in .env.local first."; exit 1; }
 [[ -n "${GEMINI_API_KEY:-}" ]] || { echo "Set GEMINI_API_KEY in .env.local first."; exit 1; }
 
