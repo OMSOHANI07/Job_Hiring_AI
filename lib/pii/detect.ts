@@ -171,22 +171,49 @@ export function detectName(text: string, fullName: string): Finding[] {
   return out;
 }
 
+/** Words that mark a line as a job title / heading rather than a person's name. */
+const NOT_NAME = new Set(("manager product senior junior associate executive engineer developer analyst consultant lead head director " +
+  "officer operations logistics supply chain summary profile resume curriculum vitae objective experience education skills " +
+  "contact details personal information designer founder intern specialist coordinator marketing sales business data " +
+  "software project program programme owner assistant student graduate professional career overview about").split(" "));
+const TITLE = /^(mr|mrs|ms|miss|dr|prof)\.?$/i;
+const titleCase = (w: string) => (w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w);
+
+function nameFrom(segment: string): string {
+  const words = segment.trim().replace(/[,;:]+$/, "").split(/\s+/).filter((w) => !TITLE.test(w));
+  if (words.length < 2 || words.length > 4) return "";
+  if (/[\d@/|]/.test(segment)) return "";
+  if (!words.every((w) => /^\p{Lu}[\p{L}'.-]*$/u.test(w))) return "";
+  if (words.some((w) => NOT_NAME.has(w.toLowerCase().replace(/[.']/g, "")))) return "";
+  if (words.every((w) => w.replace(/\./g, "").length <= 1)) return "";
+  return words.map(titleCase).join(" ");
+}
+
 /**
- * Prefill heuristic for the upload form: the first non-empty line (or its first separator segment)
- * if it is 2–4 capitalised words with no digits or "@". Arjun confirms or edits it.
+ * Find the candidate's name from the CV itself (no AI; runs before redaction):
+ * 1. a "Name:" label; 2. the first header lines (whole line, or its first segment before a separator),
+ * skipping job titles and headings; 3. the email local part, keeping only tokens that also appear as
+ * capitalised words in the CV. Returns "" if nothing credible is found (the upload then fails closed).
  */
 export function guessName(text: string): string {
-  const first = text.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
-  const candidates = [first, first.split(SEP)[0] ?? ""];
-  for (const c of candidates) {
-    const s = c.trim();
-    if (!s || /[\d@]/.test(s)) continue;
-    const words = s.split(/\s+/);
-    if (words.length < 2 || words.length > 4) continue;
-    if (!words.every((w) => /^\p{Lu}[\p{L}'.-]*$/u.test(w))) continue;
-    if (SECTION_HEADING.test(s) || /curriculum|resume|vitae/i.test(s)) continue;
-    // ALL CAPS -> Title Case for display
-    return words.map((w) => (w === w.toUpperCase() ? w[0] + w.slice(1).toLowerCase() : w)).join(" ");
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  for (const l of lines.slice(0, 25)) {
+    const m = l.match(/^(?:full\s+)?name\s*[:\-–]\s*(.+)$/i);
+    if (m) { const n = nameFrom(m[1].split(SEP)[0] ?? ""); if (n) return n; }
+  }
+  for (const l of lines.slice(0, 6)) {
+    if (SECTION_HEADING.test(l)) break;
+    for (const c of [l, l.split(SEP)[0] ?? "", l.split(/\s+[—–-]\s+/)[0] ?? ""]) {
+      const n = nameFrom(c);
+      if (n) return n;
+    }
+  }
+  const email = text.match(EMAIL_RE)?.[0];
+  if (email) {
+    const tokens = email.split("@")[0].split(/[._\-+\d]+/).filter((t) => t.length >= 3);
+    const found = tokens.filter((t) => new RegExp(`(?<![\\p{L}])${t[0].toUpperCase()}${t.slice(1).toLowerCase()}(?![\\p{L}])|(?<![\\p{L}])${t.toUpperCase()}(?![\\p{L}])`, "u").test(text))
+      .filter((t) => !NOT_NAME.has(t.toLowerCase()));
+    if (found.length >= 2) return found.slice(0, 3).map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase()).join(" ");
   }
   return "";
 }

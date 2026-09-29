@@ -173,9 +173,9 @@ export function CandidatesTable({ initialRole, data, criteria, email }: {
                     <td><div className="flex max-w-48 flex-wrap gap-1">{topFlags(r.flags).map((f) => <FlagChip key={f} flag={f} />)}</div></td>
                     <td>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <button onClick={() => setDialog({ row: r, action: "invite" })} disabled={sent}
+                        <button onClick={() => setDialog({ row: r, action: "invite" })} disabled={sent} title="Accept: draft and send an interview invitation"
                           className="whitespace-nowrap rounded-md border border-green-700 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-50 disabled:opacity-35">
-                          Interview
+                          Accept
                         </button>
                         <button onClick={() => setDialog({ row: r, action: "reject" })} disabled={sent}
                           className="whitespace-nowrap rounded-md border border-red-700 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-35">
@@ -193,7 +193,7 @@ export function CandidatesTable({ initialRole, data, criteria, email }: {
           </table>
         </div>
         <p className="mt-2 text-xs text-muted">
-          Recommendation comes from the rubric; Interview / Reject is your decision. Opening either drafts the email (AI, redacted inputs); nothing is sent until you click Send.
+          Recommendation comes from the rubric; Accept (interview invite) / Reject is your decision. Opening either drafts the email (AI, redacted inputs); nothing is sent until you click Send.
         </p>
       </div>
 

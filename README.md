@@ -54,9 +54,9 @@ which is one more reason redaction happens first and is verified twice (at uploa
 
 | Page | What it's for |
 |---|---|
-| **Candidates** (`/candidates`, home) | Every evaluated CV ranked per role: score, recommendation, level chips for all 8 rubric criteria, flags, and **Interview / Reject / Details** actions |
+| **Candidates** (`/candidates`, home) | Every evaluated CV ranked per role: score, recommendation, level chips for all 8 rubric criteria, flags, and **Accept / Reject / Details** actions |
 | **Interviews** (`/interviews`) | Everyone who has been sent an interview invitation, with their full interview brief and the slots offered |
-| **Upload CVs** (`/upload`) | Bulk upload (up to 60 PDF/DOCX): parse and redact each file, open any redaction preview, then one **Confirm & score** click for the batch |
+| **Upload CVs** (`/upload`) | Choose the role and drop up to 60 PDF/DOCX. Each CV is evaluated **automatically**: the name is read from the CV, personal details are removed and verified, the redacted text is scored, and the batch lands on the dashboard |
 | **Details** (`/results/[id]`) | Why ranked here, per-criterion breakdown with evidence, eligibility, probes, brief, email editor, downloads |
 | **Examples** (`/examples`) | The two worked samples through the real pipeline |
 
@@ -187,7 +187,7 @@ API routes run on the Node.js runtime; `/api/score/*` has `maxDuration = 60` (a 
 
 - The rubric pattern comes from **8 past hires** (5 thriving). It is a strong hypothesis, not proof. There is no senior PM among them; the SPM archetype is borrowed from the Head of Engineering.
 - **Scanned PDFs are not supported** (no OCR). Upload a DOCX or a text-based PDF.
-- **Name detection relies on founder confirmation.** The name is guessed from the first line and redacted everywhere, but Arjun must check the preview. Name tokens under 3 characters are only removed as part of the full name.
+- **Name detection is automatic** (a `Name:` label, the header lines while skipping job titles, or the email local part cross-checked against the CV). If no credible name is found, or any personal detail survives redaction, the CV is **held back and never sent to the AI**; it's flagged on the upload page with a "Fix & score" link. Name tokens under 3 characters are only removed as part of the full name.
 - Gemini at temperature 0 is not perfectly deterministic. Borderline sub-signals can change a level between runs (see the samples). Decisions for the two samples were stable across 3 runs.
 - Home-city detection covers a list of Indian and major international cities on the contact line and on `Location:` lines. Unusual places may need manual review in the preview.
 

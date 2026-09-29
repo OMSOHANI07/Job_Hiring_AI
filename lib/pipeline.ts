@@ -24,7 +24,7 @@ const MIME: Record<FileKind, string> = {
 };
 
 export type UploadResult =
-  | { kind: "created"; resumeId: string; status: "redacted" | "redaction_failed"; leakTypes: PiiType[]; emailMatch: string | null }
+  | { kind: "created"; resumeId: string; name: string; status: "redacted" | "redaction_failed"; leakTypes: PiiType[]; emailMatch: string | null }
   | { kind: "duplicate"; resumeId: string; status: ResumeRow["status"] };
 
 function piiFields(r: RedactionResult) {
@@ -80,7 +80,7 @@ export async function uploadCv(input: {
   const leakTypes = [...new Set(check.leaks.map((l) => l.type))];
   if (status === "redacted") await store.audit("redacted", resumeId, { counts: red.report.counts });
   else await store.audit("redaction_failed", resumeId, { leak_types: name ? leakTypes : ["CANDIDATE_NAME_MISSING"] });
-  return { kind: "created", resumeId, status, leakTypes, emailMatch: emailMatch !== resumeId ? emailMatch : null };
+  return { kind: "created", resumeId, name, status, leakTypes, emailMatch: emailMatch !== resumeId ? emailMatch : null };
 }
 
 /** File names can contain the candidate's name; keep only the extension-level shape for non-PII tables. */
