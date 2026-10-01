@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHero } from "@/components/PageHero";
 import { RunExample } from "./RunExample";
 
 export const metadata: Metadata = { title: "Worked examples" };
@@ -18,14 +19,14 @@ const CARDS = [
 
 export default function ExamplesPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Worked examples</h1>
-      <p className="mt-1 max-w-2xl text-sm text-muted">
+    <>
+      <PageHero tag="See it in action" title="Worked Examples">
         Two bundled fictional CVs. Each runs through the real pipeline automatically: parsing, name detection, redaction, Gemini extraction and scoring.
-      </p>
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
+      </PageHero>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+      <div className="grid gap-6 md:grid-cols-2">
         {CARDS.map((c) => (
-          <article key={c.sample} className="flex flex-col rounded-lg border border-line p-5">
+          <article key={c.sample} className="card flex flex-col p-6">
             <h2 className="text-lg font-semibold">{c.title}</h2>
             <p className="mt-1 text-sm font-medium text-accent">{c.expect}</p>
             <p className="mt-3 flex-1 text-sm text-muted">{c.body}</p>
@@ -38,6 +39,7 @@ export default function ExamplesPage() {
           </article>
         ))}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

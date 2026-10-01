@@ -20,7 +20,7 @@ export default async function ResultPage({ params }: PageProps<"/results/[resume
   const v = await getResultView(resumeId);
   if (!v) {
     return (
-      <div>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-xl font-semibold">Not scored yet</h1>
         <p className="mt-2 text-sm text-muted">
           <span className="font-mono">{resumeId}</span> has no score. <Link className="text-accent underline" href={`/review/${resumeId}`}>Open the redaction review</Link>.
@@ -37,7 +37,7 @@ export default async function ResultPage({ params }: PageProps<"/results/[resume
   const rawBon = s.bonuses.reduce((a, b) => a + bonPts(b), 0);
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 space-y-10">
       {/* Header */}
       <section aria-labelledby="cand-h" className="flex flex-wrap items-start justify-between gap-6">
         <div>

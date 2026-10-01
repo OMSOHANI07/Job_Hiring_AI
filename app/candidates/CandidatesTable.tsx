@@ -103,8 +103,8 @@ export function CandidatesTable({ initialRole, data, criteria, email }: {
     <div className="mt-6">
       <dl className="mb-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         {([["Evaluated", counts.evaluated], ["Interview invites sent", counts.invited], ["Rejections sent", counts.rejected], ["Awaiting your decision", counts.decide]] as const).map(([k, n]) => (
-          <div key={k} className="rounded-lg border border-line px-3 py-2">
-            <dt className="text-xs text-muted">{k}</dt><dd className="text-2xl font-semibold tabular-nums">{n}</dd>
+          <div key={k} className="card px-4 py-3">
+            <dt className="text-xs font-semibold text-muted">{k}</dt><dd className="text-3xl font-extrabold tabular-nums text-navy">{n}</dd>
           </div>
         ))}
       </dl>

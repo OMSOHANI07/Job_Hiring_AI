@@ -32,7 +32,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/r
   const emailMatch = typeof sp.emailMatch === "string" && isResumeId(sp.emailMatch) ? sp.emailMatch : null;
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted">Step 2 of 3 · Check what the AI will see</p>

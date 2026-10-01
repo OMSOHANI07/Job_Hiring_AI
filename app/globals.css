@@ -1,28 +1,60 @@
 @import "tailwindcss";
 
-/* Kargo: white, calm, one accent (navy, from the Components Map). */
+/* Kargo Hiring: royal blue + deep navy, light-blue gradients, rounded cards, pill tags. */
 @theme {
-  --color-accent: #1f3a68;
-  --color-accent-hover: #172c50;
-  --color-accent-soft: #e8eef8;
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
-  --color-line: #e2e8f0;
-  --color-surface: #f8fafc;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-accent: #1f55e0;
+  --color-accent-hover: #1743b8;
+  --color-accent-soft: #e8efff;
+  --color-navy: #0a1a4f;
+  --color-navy-2: #0f2a78;
+  --color-ink: #0b1437;
+  --color-muted: #5b6785;
+  --color-line: #dbe4f6;
+  --color-surface: #f4f7ff;
+  --font-sans: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --radius-card: 18px;
 }
 
 html { color-scheme: light; }
 body { background: #ffffff; color: var(--color-ink); }
+h1, h2, h3 { letter-spacing: -0.01em; }
 
 /* Visible keyboard focus everywhere */
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Light-blue hero band used at the top of pages */
+.hero-band {
+  background:
+    radial-gradient(1200px 400px at 85% -10%, #cfe0ff 0%, rgba(207, 224, 255, 0) 60%),
+    radial-gradient(900px 380px at 0% 0%, #e6efff 0%, rgba(230, 239, 255, 0) 60%),
+    linear-gradient(180deg, #f2f6ff 0%, #ffffff 100%);
+}
+/* Deep navy feature band */
+.navy-band {
+  background:
+    radial-gradient(900px 420px at 15% 0%, rgba(54, 104, 255, 0.35) 0%, rgba(54, 104, 255, 0) 60%),
+    linear-gradient(135deg, #071443 0%, #0b1f63 55%, #0f2a78 100%);
+}
+
+/* Small pill tag with an arrow, e.g. "Screen · Shortlist · Hire →" */
+.tag-pill {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: 1px solid #c7d6fb; background: #ffffffcc; color: var(--color-accent);
+  border-radius: 999px; padding: 0.2rem 0.75rem; font-size: 0.75rem; font-weight: 600;
+}
+.navy-band .tag-pill { background: #ffffff; }
+
+.card { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgba(11, 20, 55, 0.04), 0 8px 24px -12px rgba(31, 85, 224, 0.12); }
 
 .tok { border-radius: 4px; padding: 0 3px; font-weight: 600; background: #fef3c7; color: #78350f; }
 .tok-contact { background: #e0e7ff; color: #312e81; }
 
 table.data { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-table.data th { text-align: left; font-weight: 600; color: var(--color-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--color-line); background: var(--color-surface); }
-table.data td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--color-line); vertical-align: top; }
-table.data tfoot td { background: var(--color-surface); font-weight: 500; }
+table.data th { text-align: left; font-weight: 700; color: var(--color-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--color-line); background: var(--color-surface); }
+table.data td { padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--color-line); vertical-align: top; }
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data tfoot td { background: var(--color-surface); font-weight: 600; }
+
+/* Tables and bordered panels get the rounded card corners */
+.overflow-x-auto.rounded-lg.border, .rounded-lg.border { border-radius: var(--radius-card); }

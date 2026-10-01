@@ -4,6 +4,7 @@ import { BriefView } from "@/components/BriefView";
 import { DecisionBadge } from "@/components/Badges";
 import { ROLE_LABEL } from "@/lib/decision";
 import { getInterviews } from "@/lib/interviews";
+import { PageHero } from "@/components/PageHero";
 import { GenerateBrief } from "./GenerateBrief";
 
 export const metadata: Metadata = { title: "Interviews" };
@@ -12,15 +13,15 @@ export const dynamic = "force-dynamic";
 export default async function InterviewsPage() {
   const { sent, draftedNotSent } = await getInterviews();
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Interviews</h1>
-      <p className="mt-1 text-sm text-muted">
+    <>
+      <PageHero tag="Interview pipeline" title="Prepared For Every Conversation">
         Everyone you&apos;ve sent an interview invitation to, with their interview brief.
         {draftedNotSent > 0 && <> {draftedNotSent} more invitation{draftedNotSent === 1 ? " is" : "s are"} drafted but not sent yet (see <Link href="/candidates" className="text-accent underline">Candidates</Link>).</>}
-      </p>
+      </PageHero>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
 
       {sent.length === 0 ? (
-        <div className="mt-10 rounded-lg border border-dashed border-line p-10 text-center text-sm text-muted">
+        <div className="card mt-2 border-dashed p-10 text-center text-sm text-muted">
           No interview invitations sent yet. On <Link href="/candidates" className="text-accent underline">Candidates</Link>, click <strong>Interview</strong> on a candidate and send the invitation.
         </div>
       ) : (
@@ -30,7 +31,7 @@ export default async function InterviewsPage() {
           </nav>
           <div className="mt-6 space-y-8">
             {sent.map((c) => (
-              <article key={c.resumeId} id={c.resumeId} aria-labelledby={`h-${c.resumeId}`} className="scroll-mt-20 rounded-lg border border-line p-5">
+              <article key={c.resumeId} id={c.resumeId} aria-labelledby={`h-${c.resumeId}`} className="card scroll-mt-24 p-6">
                 <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted">{ROLE_LABEL[c.role]}</p>
@@ -56,6 +57,7 @@ export default async function InterviewsPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
